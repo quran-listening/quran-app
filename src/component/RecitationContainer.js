@@ -83,6 +83,9 @@ const RecitationContainer = () => {
 
   const [arabicRecognizedText, setArabicRecognizedText] = useState("");
   const [isMuted, setIsMuted] = useState(true);
+  // Add timer state near other state declarations
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [timerInterval, setTimerInterval] = useState(null);
 
   const navigate = useNavigate();
 
@@ -139,6 +142,36 @@ const RecitationContainer = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recognizedText]);
+
+  // Format time function
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
+
+  // Add useEffect for timer management
+  useEffect(() => {
+    if (flag) {
+      // Start timer when listening begins
+      const interval = setInterval(() => {
+        setElapsedTime((prev) => prev + 1);
+      }, 1000);
+      setTimerInterval(interval);
+    } else {
+      // Clear timer when listening stops
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        setTimerInterval(null);
+      }
+      setElapsedTime(0);
+    }
+    return () => {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+    };
+  }, [flag]);
 
   const handleDevClick = () => {
     navigate(`/dev`);
@@ -214,7 +247,7 @@ const RecitationContainer = () => {
                       maxWidth: "800px",
                     }}
                   >
-                    The app may not detect Arabic correctly and give incorrect
+                    The open source app may not detect Arabic correctly and give incorrect
                     search results. Please always match the search results
                     before listening to the translation. You can restart
                     searching and turn off the mic access by reloading the page
@@ -275,7 +308,26 @@ const RecitationContainer = () => {
                   </Box>
                 </Box>
 
-                <Box sx={AyatBox} ref={ayatListRef}>
+                <Box sx={{
+                    ...AyatBox,
+                    resize: 'vertical',
+                    overflow: 'auto',
+                    minHeight: '300px',
+                    maxHeight: '80vh',
+                    position: 'relative',  // Required for absolute positioning of pseudo-element
+                    cursor: 'default',     // Reset default cursor
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      bottom: 0,
+                      right: 0,
+                      width: '20px',
+                      height: '20px',
+                      cursor: 'ns-resize',
+                      // Optional: add a visual indicator for the resize handle
+                      backgroundImage: 'linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.1) 50%)'
+                    }
+                  }} ref={ayatListRef}>
                 {matchesFound && (
                     <Box sx={{ 
                       direction: "rtl", 
@@ -504,7 +556,8 @@ const RecitationContainer = () => {
                   }}
                 >
                   <Typography mr={1} sx={{ color: "#fff" }}>
-                    Translation Speed = {ttsRateState.toFixed(2)}
+                    Time: {formatTime(elapsedTime)} | Translation Speed ={" "}
+                    {ttsRateState.toFixed(2)}
                   </Typography>
                   <Checkbox
                     sx={{
