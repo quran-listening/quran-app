@@ -121,22 +121,21 @@ const RecitationContainer = () => {
 
   useEffect(() => {
     setArabicRecognizedText(translationRecognizedTextRef.current);
-     // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [translationRecognizedTextRef.current]);
 
-    useEffect(() => {
-      setIsMuted(isMutedRef.current);
-       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isMutedRef.current]);
+  useEffect(() => {
+    setIsMuted(isMutedRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMutedRef.current]);
 
   useEffect(() => {
     setTtsRateState(ttsRate.current);
-     // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ttsRate.current]);
 
   // Add effect to hide start text when Arabic is detected
   useEffect(() => {
-    
     if (recognizedText && showStartText) {
       setShowStartText(false);
     }
@@ -181,51 +180,54 @@ const RecitationContainer = () => {
   return (
     <Box sx={backgroundBg}>
       <Box sx={contentWrapper}>
-        {!flag && <Box>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            marginBottom: "20px",
-          }}
-        >
-          <img src={kalima} alt="Logo" />
-        </Box>
+        {!flag && (
+          <Box>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                marginBottom: "20px",
+              }}
+            >
+              <img src={kalima} alt="Logo" />
+            </Box>
 
-        <Box sx={welcomeCard}>
-          <Box className="time">
-            <Box sx={{ marginBottom: "0px", ...bodyXs }} className="today">
-              Today
-            </Box>
-            <Box sx={timeStyle}>
-              {new Date().toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+            <Box sx={welcomeCard}>
+              {/* <Box className="time">
+                <Box sx={{ marginBottom: "0px", ...bodyXs }} className="today">
+                  Today
+                </Box>
+                <Box sx={timeStyle}>
+                  {new Date().toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </Box>
+              </Box> */}
+              <Box sx={{ textAlign: "left" }}>
+                <Box sx={h2}>Real-time Quran Translation App</Box>
+                <Box sx={{ marginTop: "2px", ...bodyXs }}>
+                  This open source app will help you understand the divine
+                  message of the Holy Quran by translating live Arabic
+                  recitation.
+                </Box>
+                <Box sx={dateDouble}>
+                  {/* <Box sx={{ marginTop: "10px", ...bodyXs }}>
+                    {formattedDate}
+                  </Box> */}
+                </Box>
+              </Box>
+              <Box sx={mosqueImg}>
+                <img
+                  src={mosque}
+                  alt="Mosque"
+                  style={{ borderBottomRightRadius: "20px" }}
+                />
+              </Box>
             </Box>
           </Box>
-          <Box sx={{ textAlign: "center" }}>
-            <Box sx={h2}>
-              Welcome to the Real-time Quran Listening Application
-            </Box>
-            <Box sx={{ marginTop: "2px", ...bodyXs }}>
-              This app will help you understand the divine message of the Holy
-              Quran by translating live Arabic recitation.
-            </Box>
-            <Box sx={dateDouble}>
-              <Box sx={{ marginTop: "10px", ...bodyXs }}>{formattedDate}</Box>
-            </Box>
-          </Box>
-          <Box sx={mosqueImg}>
-            <img
-              src={mosque}
-              alt="Mosque"
-              style={{ borderBottomRightRadius: "20px" }}
-            />
-          </Box>
-        </Box>
-        </Box>}
+        )}
         {flag ? (
           // ---------------- LIVE MODE ----------------
           <Box>
@@ -247,9 +249,9 @@ const RecitationContainer = () => {
                       maxWidth: "800px",
                     }}
                   >
-                    The open source app may not detect Arabic correctly and give incorrect
-                    search results. Please always match the search results
-                    before listening to the translation. You can restart
+                    The open source app may not detect Arabic correctly and give
+                    incorrect search results. Please always match the search
+                    results before listening to the translation. You can restart
                     searching and turn off the mic access by reloading the page
                   </Box>
 
@@ -261,9 +263,9 @@ const RecitationContainer = () => {
                       maxWidth: "800px",
                     }}
                   >
-                    You can help improve this open source app. Contact us below using the
-                    feedback form and indicate you would like to help improve
-                    this app
+                    You can help improve this open source app. Contact us below
+                    using the feedback form and indicate you would like to help
+                    improve this app
                   </Box>
                 </Box>
                 <Box
@@ -308,43 +310,47 @@ const RecitationContainer = () => {
                   </Box>
                 </Box>
 
-                <Box sx={{
+                <Box
+                  sx={{
                     ...AyatBox,
-                    resize: 'vertical',
-                    overflow: 'auto',
-                    minHeight: '300px',
-                    maxHeight: '80vh',
-                    position: 'relative',  // Required for absolute positioning of pseudo-element
-                    cursor: 'default',     // Reset default cursor
-                    '&::after': {
+                    resize: "vertical",
+                    overflow: "auto",
+                    minHeight: "300px",
+                    maxHeight: "80vh",
+                    position: "relative", // Required for absolute positioning of pseudo-element
+                    cursor: "default", // Reset default cursor
+                    "&::after": {
                       content: '""',
-                      position: 'absolute',
+                      position: "absolute",
                       bottom: 0,
                       right: 0,
-                      width: '20px',
-                      height: '20px',
-                      cursor: 'ns-resize',
+                      width: "20px",
+                      height: "20px",
+                      cursor: "ns-resize",
                       // Optional: add a visual indicator for the resize handle
-                      backgroundImage: 'linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.1) 50%)'
-                    }
-                  }} ref={ayatListRef}>
-                {matchesFound && (
-                    <Box sx={{ 
-                      direction: "rtl", 
-                      color: "#fff",
-                      position: "sticky",
-                      top: "-10px",
-                      right: "-5px",
-                      minHeight: "30px",
-                      backgroundColor: "#1E1F26",
-                      padding: "10px",
-                      zIndex: 1,
-                    }}>
-                      {showStartText ? (
-                        "Start Reciting. Turn on speaker to listen to translation"
-                      ) : (
-                        recognizedText
-                      )}
+                      backgroundImage:
+                        "linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.1) 50%)",
+                    },
+                  }}
+                  ref={ayatListRef}
+                >
+                  {matchesFound && (
+                    <Box
+                      sx={{
+                        direction: "rtl",
+                        color: "#fff",
+                        position: "sticky",
+                        top: "-10px",
+                        right: "-5px",
+                        minHeight: "30px",
+                        backgroundColor: "#1E1F26",
+                        padding: "10px",
+                        zIndex: 1,
+                      }}
+                    >
+                      {showStartText
+                        ? "Start Reciting. Turn on speaker to listen to translation"
+                        : recognizedText}
                     </Box>
                   )}
                   {arabicRecognizedText?.length > 0 && (
@@ -607,23 +613,22 @@ const RecitationContainer = () => {
 
               <FeedbackForm />
               <Box sx={{ marginTop: "30px" }}>
-              <Button
-                onClick={handleDevClick}
-                sx={{
-                  color: '#999696',
-                  textDecoration: 'none',
-                  cursor: 'pointer',
-                  backgroundColor: 'transparent',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  }
-                }}
-              >
-                Become a developer click here
-              </Button>
+                <Button
+                  onClick={handleDevClick}
+                  sx={{
+                    color: "#999696",
+                    textDecoration: "none",
+                    cursor: "pointer",
+                    backgroundColor: "transparent",
+                    "&:hover": {
+                      backgroundColor: "rgba(255, 255, 255, 0.1)",
+                    },
+                  }}
+                >
+                  Become a developer click here
+                </Button>
+              </Box>
             </Box>
-            </Box>
-           
           </Box>
         ) : (
           // ---------------- INITIAL MODE ----------------
@@ -680,24 +685,21 @@ const RecitationContainer = () => {
               <Button
                 onClick={handleDevClick}
                 sx={{
-                  color: '#999696',
-                  textDecoration: 'none',
-                  cursor: 'pointer',
-                  backgroundColor: 'transparent',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  }
+                  color: "#999696",
+                  textDecoration: "none",
+                  cursor: "pointer",
+                  backgroundColor: "transparent",
+                  "&:hover": {
+                    backgroundColor: "rgba(255, 255, 255, 0.1)",
+                  },
                 }}
               >
                 Become a developer click here
               </Button>
             </Box>
           </Box>
-          
         )}
-        
       </Box>
-      
     </Box>
   );
 };
