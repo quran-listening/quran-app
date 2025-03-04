@@ -209,7 +209,7 @@ export function speakTranslation(text, { isMutedRef, ttsRate, language }) {
 }
 
 export const initRollingWindow = (surahData, startIndex) => {
-  const firstTwo = surahData?.verses?.slice(startIndex, startIndex + 1);
+  const firstTwo = surahData?.verses?.slice(startIndex, startIndex + 2);
   return firstTwo;
 };
 
@@ -231,6 +231,8 @@ export const updateRollingWindow = (
     return remainingWindow;
   }
   const nextOne = surahData?.verses?.slice(verseId, verseId + 1);
+  console.log("surahData?.verses",nextOne)
+
   return nextOne;
 };
 
@@ -267,23 +269,24 @@ export const processRecognition = (transcript, resetter, params) => {
     ...verse,
     normalizedText: normalizeArabicText(verse.text),
   }));
-
+  console.log("searchableVerses", searchableVerses);
   const normalizedTranscript = normalizeArabicText(transcript);
   const fuseInstance = fuseInstanceFn(searchableVerses, 0.3);
   const results = findMultipleMatches(normalizedTranscript, fuseInstance);
-
+  console.log("results", results);
   // Check if results are empty and increment the counter
-  if (results.length === 0) {
-    emptyResultsCounter.current = (emptyResultsCounter.current || 0) + 1; // Initialize if undefined
-  } else {
-    emptyResultsCounter.current = 0; // Reset counter if results are found
-  }
+  // if (results.length === 0) {
+  //   emptyResultsCounter.current = (emptyResultsCounter.current || 0) + 1; // Initialize if undefined
+  // } else {
+  //   emptyResultsCounter.current = 0; // Reset counter if results are found
+  // }
 
-  // Call resetter if results are empty 4 times
-  if (emptyResultsCounter.current >= 4) {
-    resetter();
-    emptyResultsCounter.current = 0;
-  }
+  // // Call resetter if results are empty 4 times
+  // if (emptyResultsCounter.current >= 4) {
+  //   console.log("empty resetter called");
+  //   resetter();
+  //   emptyResultsCounter.current = 0;
+  // }
 
   for (const el of results || []) {
     if (processedVersesRef.current?.has(el?.verseId)) continue;

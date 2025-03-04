@@ -175,11 +175,9 @@ export const RecitationProvider = ({ children }) => {
       isMutedRef,
       ttsRate,
       language,
-      lastAyahProcessedRef
+      lastAyahProcessedRef,
     });
   };
-
- 
 
   const doSpeakTranslation = (textToSpeak) => {
     speakTranslation(textToSpeak, {
@@ -225,7 +223,6 @@ export const RecitationProvider = ({ children }) => {
     }
 
     if (!surahFlag.current && surahId.current < 1) {
-
       // Initialize word queue for progressive matching
       let wordQueue = [];
       let matchFound = false;
@@ -269,29 +266,31 @@ export const RecitationProvider = ({ children }) => {
               bismillahFoundRef.current = false;
               const surahDataItem = quranData[foundItem.id - 1];
               currentSurahData.current = surahDataItem;
-              
+
               setSurahName(foundItem?.name);
               surahId.current = foundItem?.id;
-              
-              setPreviousAyaList((prev) => [
-                ...prev,
-                {
-                  text: surahDataItem?.verses?.[0]?.text,
-                  translation: surahDataItem?.verses?.[0]?.translation,
-                  surahId: surahDataItem?.surahId,
-                  verseId: surahDataItem?.verses?.[0]?.verseId,
-                },
-              ]);
+
+              // setPreviousAyaList((prev) => [
+              //   ...prev,
+              //   {
+              //     text: surahDataItem?.verses?.[0]?.text,
+              //     translation: surahDataItem?.verses?.[0]?.translation,
+              //     surahId: surahDataItem?.surahId,
+              //     verseId: surahDataItem?.verses?.[0]?.verseId,
+              //   },
+              // ]);
+              const newWindow = initRollingWindow(surahDataItem, 0);
+              console.log("newWindow", newWindow);
+              rollingWindowRef.current = newWindow;
               lastAyahIdRef.current = surahDataItem?.verses?.[0]?.verseId;
               surahFlag.current = true;
-              speakTranslation(foundItem?.translation, {
-                isMutedRef,
-                ttsRate: ttsRate.current,
-                language,
-              });
+              // speakTranslation(foundItem?.translation, {
+              //   isMutedRef,
+              //   ttsRate: ttsRate.current,
+              //   language,
+              // });
               // Initialize rolling window
-              const newWindow = initRollingWindow(surahDataItem, 1);
-              rollingWindowRef.current = newWindow;
+
               break;
             }
             // Set states for the found surah
@@ -316,14 +315,12 @@ export const RecitationProvider = ({ children }) => {
   };
 
   const resetter = () => {
+    console.log("resetter called");
     stopRecognition();
-    
-    surahFlag.current = false;
-    surahId.current = 0;
 
     // Reset recognized text
     setRecognizedText("");
-    currentSurahData.current = null;
+
     setCurrentVerseIndex(0);
     setRollingWindow([]);
 
@@ -332,8 +329,11 @@ export const RecitationProvider = ({ children }) => {
     setPauseStartTime(null);
     setTotalPausedTime(0);
     setTotalArabicWords(0);
+    surahFlag.current = false;
+    surahId.current = 0;
     accumulatedTranscriptRef.current = "";
-
+    rollingWindowRef.current = [];
+    currentSurahData.current = null;
     processedVersesRef.current = new Set();
   };
 
@@ -364,7 +364,7 @@ export const RecitationProvider = ({ children }) => {
 
   // --------------- 8) Use the custom hook: useSpeechRecognition ---------------
   // This hook handles the actual browser speech recognition events
- 
+
   const {
     startRecognition,
     stopRecognition,
