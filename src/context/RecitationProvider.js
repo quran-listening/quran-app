@@ -60,7 +60,7 @@ export const RecitationProvider = ({ children }) => {
   const AllahoHoAkbarFoundRef = useRef(false);
   const ttsRate = useRef(1.0);
   const lastAyahProcessedRef = useRef(false);
-  const emptyResultsCounter = useRef(false);
+  const emptyResultsCounter = useRef(0);
 
   // "Next verse" matching
   const [rollingWindow, setRollingWindow] = useState([]);
@@ -111,10 +111,6 @@ export const RecitationProvider = ({ children }) => {
     });
 
     versesList.current = verses;
-
-    const fuseInstance = fuseInstanceFn(versesList.current, 0.2);
-    setFuse(fuseInstance);
-    fuseRef.current = fuseInstance;
   }, [surahData]);
 
   // --------------- 2) Adjust TTS Speed ---------------
@@ -231,14 +227,17 @@ export const RecitationProvider = ({ children }) => {
       for (let i = 0; i < words.length && !matchFound; i++) {
         wordQueue.push(words[i]);
         const searchPhrase = wordQueue.join(" ");
+        const fuseInstance = fuseInstanceFn(versesList.current, 0.2);
         const normalizedPhrase = normalizeArabicText(searchPhrase);
-        const fuseResults = fuseRef.current?.search(normalizedPhrase);
-
+        const fuseResults = fuseInstance?.search(normalizedPhrase);
+        console.log("fuseResults", fuseResults);
         if (fuseResults && fuseResults.length > 0) {
           if (fuseResults.length === 1) {
             // Unique match found
             matchFound = true;
+
             const foundItem = fuseResults[0].item;
+            console.log("foundItem", foundItem);
             if (foundItem?.id === 0) {
               // bismillahDetection detected
               if (!bismillahFoundRef.current) {
@@ -264,7 +263,8 @@ export const RecitationProvider = ({ children }) => {
             } else {
               AllahoHoAkbarFoundRef.current = false;
               bismillahFoundRef.current = false;
-              const surahDataItem = quranData[foundItem.id - 1];
+              const surahDataItem = quranData[foundItem?.id - 1];
+              console.log("surahDataItem", surahDataItem);
               currentSurahData.current = surahDataItem;
 
               setSurahName(foundItem?.name);
@@ -280,7 +280,6 @@ export const RecitationProvider = ({ children }) => {
               //   },
               // ]);
               const newWindow = initRollingWindow(surahDataItem, 0);
-              console.log("newWindow", newWindow);
               rollingWindowRef.current = newWindow;
               lastAyahIdRef.current = surahDataItem?.verses?.[0]?.verseId;
               surahFlag.current = true;
@@ -297,7 +296,7 @@ export const RecitationProvider = ({ children }) => {
           } else {
             console.log(`Found ${fuseResults.length} matches, continuing...`);
           }
-        } else if (i === words.length - 1) {
+        } else if (i === words.length - 1 || fuseResults.length === 0) {
           // No matches found after trying all words
           console.log("No surah match found, searching whole Quran...");
           doSearchInWholeQuran(transcript);
@@ -315,14 +314,13 @@ export const RecitationProvider = ({ children }) => {
   };
 
   const resetter = () => {
-    console.log("resetter called");
     stopRecognition();
 
     // Reset recognized text
     setRecognizedText("");
 
     setCurrentVerseIndex(0);
-    setRollingWindow([]);
+    // setRollingWindow([]);
 
     // Reset times
     setStartTime(null);
