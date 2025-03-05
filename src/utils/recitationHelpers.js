@@ -215,23 +215,18 @@ export const initRollingWindow = (surahData, startIndex) => {
 
 // Update processRecognition to use the rolling window
 
-export const updateRollingWindow = (
-  currentWindow,
-  surahData,
-  verseId,
-  searchInWholeQuran
-) => {
+export const updateRollingWindow = (surahData, verseId) => {
   // Calculate remaining verses
   const remainingVerses = surahData?.verses?.length - verseId;
 
   // If we have 3 or fewer verses remaining, include all of them
   // This ensures we don't miss matches when nearing the end
-  if (remainingVerses <= 3) {
-    const remainingWindow = surahData?.verses?.slice(verseId);
-    return remainingWindow;
-  }
+  // if (remainingVerses <= 3) {
+  //   const remainingWindow = surahData?.verses?.slice(verseId);
+  //   return remainingWindow;
+  // }
   const nextOne = surahData?.verses?.slice(verseId, verseId + 1);
-  console.log("surahData?.verses",nextOne)
+  console.log("surahDataverses", nextOne, verseId);
 
   return nextOne;
 };
@@ -262,7 +257,7 @@ export const processRecognition = (transcript, resetter, params) => {
 
   // Get current rolling window verses
   const currentWindow = rollingWindowRef.current;
-
+  console.log("currentWindow", currentWindow);
   // Prepare searchable format for current window only
 
   const searchableVerses = currentWindow?.map((verse) => ({
@@ -273,23 +268,24 @@ export const processRecognition = (transcript, resetter, params) => {
   const normalizedTranscript = normalizeArabicText(transcript);
   const fuseInstance = fuseInstanceFn(searchableVerses, 0.3);
   const results = findMultipleMatches(normalizedTranscript, fuseInstance);
-  console.log("results", results);
+  console.log("emptyResultsCounter.current", emptyResultsCounter.current);
   // Check if results are empty and increment the counter
-  // if (results.length === 0) {
-  //   emptyResultsCounter.current = (emptyResultsCounter.current || 0) + 1; // Initialize if undefined
-  // } else {
-  //   emptyResultsCounter.current = 0; // Reset counter if results are found
-  // }
+  if (results.length === 0) {
+    emptyResultsCounter.current = (emptyResultsCounter.current || 0) + 1; // Initialize if undefined
+  } else {
+    emptyResultsCounter.current = 0; // Reset counter if results are found
+  }
 
   // // Call resetter if results are empty 4 times
-  // if (emptyResultsCounter.current >= 4) {
-  //   console.log("empty resetter called");
-  //   resetter();
-  //   emptyResultsCounter.current = 0;
-  // }
+  if (emptyResultsCounter.current > 7) {
+    resetter();
+    emptyResultsCounter.current = 0;
+  }
 
   for (const el of results || []) {
-    if (processedVersesRef.current?.has(el?.verseId)) continue;
+    if (processedVersesRef.current?.has(el?.verseId)) {
+      continue;
+    }
 
     // Update the processed verses set with the new verseId
     processedVersesRef.current = new Set(processedVersesRef.current).add(
@@ -329,10 +325,9 @@ export const processRecognition = (transcript, resetter, params) => {
     lastAyahIdRef.current = el?.verseId;
     // Slide window forward after processing verse
     rollingWindowRef.current = updateRollingWindow(
-      currentWindow,
+      // currentWindow,
       currentSurahData.current,
-      el?.verseId,
-      searchInWholeQuran
+      el?.verseId
     );
 
     // Early exit: break the loop if the last verse is reached
@@ -343,9 +338,6 @@ export const processRecognition = (transcript, resetter, params) => {
   }
 
   if (lastAyahProcessedRef.current) {
-    translationRecognizedTextRef.current = "";
-    setTranslations([]);
-
     const synth = window.speechSynthesis;
     const lastTranslation =
       currentSurahData?.current?.verses[lastAyahIdRef.current - 1]?.translation;
@@ -356,18 +348,20 @@ export const processRecognition = (transcript, resetter, params) => {
       utterance.pitch = 1.0;
       utterance.volume = isMutedRef.current ? 0 : 1;
       utterance.onend = () => {
-        recognitionRef.current.stop();
-        resetter();
+        lastAyahProcessedRef.current = false;
       };
-      lastAyahProcessedRef.current = false;
+      
       synth.speak(utterance);
 
       console.log("recognition refrence", recognitionRef.current.stop);
 
       recognitionRef.current.stop();
+      rollingWindowRef.current = []; 
+      resetter();
     } else {
-      // recognitionRef.current.stop();
-      // resetter();
+      recognitionRef.current.stop();
+      rollingWindowRef.current = [];
+      resetter();
     }
   }
 };
