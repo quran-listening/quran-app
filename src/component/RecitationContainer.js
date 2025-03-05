@@ -315,6 +315,7 @@ const RecitationContainer = () => {
                     ...AyatBox,
                     resize: "vertical",
                     overflow: "auto",
+                    height: "300px", // Set fixed initial height
                     minHeight: "300px",
                     maxHeight: "80vh",
                     position: "relative", // Required for absolute positioning of pseudo-element
