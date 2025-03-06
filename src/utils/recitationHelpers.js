@@ -19,7 +19,7 @@ export function searchInWholeQuran(
     surahId,
     setSurahName,
     currentSurahData,
-    setCurrentVerseIndex,
+    currentVerseIndexRef,
     rollingWindowRef,
     translationRecognizedTextRef,
     setTranslations,
@@ -48,7 +48,7 @@ export function searchInWholeQuran(
     setSurahName(foundSurahName);
     const surahDataItem = quranData[foundSurahId - 1];
     currentSurahData.current = surahDataItem;
-    setCurrentVerseIndex(verseIndexFound);
+    currentVerseIndexRef = verseIndexFound;
 
     const newWindow = initRollingWindow(surahDataItem, verseIndexFound);
     rollingWindowRef.current = newWindow;
@@ -186,7 +186,7 @@ export const loadNextChunk = (
  * @param {object} params
  * @returns Promise that resolves when TTS finishes
  */
-export function speakTranslation(text, { isMutedRef, ttsRate, language }) {
+export function speakTranslation(text, resetter, { isMutedRef, ttsRate, language  }) {
   const synth = window.speechSynthesis;
   if (!synth) {
     console.error("Speech synthesis not supported");
@@ -202,7 +202,9 @@ export function speakTranslation(text, { isMutedRef, ttsRate, language }) {
   utterance.pitch = 1.0; // Normal pitch
 
   utterance.onstart = () => console.log("Started speaking");
-  utterance.onend = () => console.log("Finished speaking");
+  utterance.onend = () => {
+    console.log("Finished speaking");
+  }
   utterance.onerror = (e) => console.error("Speech error:", e);
 
   synth.speak(utterance);
@@ -270,17 +272,17 @@ export const processRecognition = (transcript, resetter, params) => {
   const results = findMultipleMatches(normalizedTranscript, fuseInstance);
   console.log("emptyResultsCounter.current", emptyResultsCounter.current);
   // Check if results are empty and increment the counter
-  if (results.length === 0) {
-    emptyResultsCounter.current = (emptyResultsCounter.current || 0) + 1; // Initialize if undefined
-  } else {
-    emptyResultsCounter.current = 0; // Reset counter if results are found
-  }
+  // if (results.length === 0) {
+  //   emptyResultsCounter.current = (emptyResultsCounter.current || 0) + 1; // Initialize if undefined
+  // } else {
+  //   emptyResultsCounter.current = 0; // Reset counter if results are found
+  // }
 
-  // // Call resetter if results are empty 4 times
-  if (emptyResultsCounter.current > 7) {
-    resetter();
-    emptyResultsCounter.current = 0;
-  }
+  // // // Call resetter if results are empty 4 times
+  // if (emptyResultsCounter.current > 7) {
+  //   resetter();
+  //   emptyResultsCounter.current = 0;
+  // }
 
   for (const el of results || []) {
     if (processedVersesRef.current?.has(el?.verseId)) {
@@ -310,7 +312,7 @@ export const processRecognition = (transcript, resetter, params) => {
         !isRepeatedVerse
       ) {
         console.log("calling speak translation function");
-        speakTranslation(el?.translation, {
+        speakTranslation(el?.translation, resetter, {
           isMutedRef,
           ttsRate: ttsRate.current,
           language,
@@ -349,15 +351,14 @@ export const processRecognition = (transcript, resetter, params) => {
       utterance.volume = isMutedRef.current ? 0 : 1;
       utterance.onend = () => {
         lastAyahProcessedRef.current = false;
+        resetter();
       };
       
       synth.speak(utterance);
 
-      console.log("recognition refrence", recognitionRef.current.stop);
-
       recognitionRef.current.stop();
       rollingWindowRef.current = []; 
-      resetter();
+      
     } else {
       recognitionRef.current.stop();
       rollingWindowRef.current = [];
