@@ -119,7 +119,10 @@ export default function useSpeechRecognition({
 
     recognition.onend = () => {
       console.log("Speech recognition ended.");
-      recognition.start();
+      setTimeout(()=>{
+        recognition.start();
+      },300)
+      
     };
 
     return () => {

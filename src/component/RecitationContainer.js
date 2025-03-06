@@ -328,9 +328,6 @@ const RecitationContainer = () => {
                       width: "20px",
                       height: "20px",
                       cursor: "ns-resize",
-                      // Optional: add a visual indicator for the resize handle
-                      backgroundImage:
-                        "linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.1) 50%)",
                     },
                   }}
                   ref={ayatListRef}
@@ -341,7 +338,7 @@ const RecitationContainer = () => {
                         direction: "rtl",
                         color: "#fff",
                         position: "sticky",
-                        top: "-10px",
+                        top: "-11px",
                         right: "-5px",
                         minHeight: "30px",
                         backgroundColor: "#1E1F26",
