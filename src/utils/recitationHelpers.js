@@ -226,10 +226,10 @@ export const updateRollingWindow = (surahData, verseId) => {
 
   // If we have 3 or fewer verses remaining, include all of them
   // This ensures we don't miss matches when nearing the end
-  // if (remainingVerses <= 3) {
-  //   const remainingWindow = surahData?.verses?.slice(verseId);
-  //   return remainingWindow;
-  // }
+  if (remainingVerses <= 3) {
+    const remainingWindow = surahData?.verses?.slice(verseId);
+    return remainingWindow;
+  }
   const nextOne = surahData?.verses?.slice(verseId, verseId + 1);
   console.log("surahDataverses", nextOne, verseId);
 
@@ -274,18 +274,7 @@ export const processRecognition = (transcript, resetter, params) => {
   const fuseInstance = fuseInstanceFn(searchableVerses, 0.3);
   const results = findMultipleMatches(normalizedTranscript, fuseInstance);
   console.log("emptyResultsCounter.current", emptyResultsCounter.current);
-  // Check if results are empty and increment the counter
-  // if (results.length === 0) {
-  //   emptyResultsCounter.current = (emptyResultsCounter.current || 0) + 1; // Initialize if undefined
-  // } else {
-  //   emptyResultsCounter.current = 0; // Reset counter if results are found
-  // }
-
-  // // // Call resetter if results are empty 4 times
-  // if (emptyResultsCounter.current > 7) {
-  //   resetter();
-  //   emptyResultsCounter.current = 0;
-  // }
+  
 
   for (const el of results || []) {
     if (processedVersesRef.current?.has(el?.verseId)) {
