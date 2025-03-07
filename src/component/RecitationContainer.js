@@ -328,9 +328,6 @@ const RecitationContainer = () => {
                       width: "20px",
                       height: "20px",
                       cursor: "ns-resize",
-                      // Optional: add a visual indicator for the resize handle
-                      backgroundImage:
-                        "linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.1) 50%)",
                     },
                   }}
                   ref={ayatListRef}
@@ -341,7 +338,7 @@ const RecitationContainer = () => {
                         direction: "rtl",
                         color: "#fff",
                         position: "sticky",
-                        top: "-10px",
+                        top: "-11px",
                         right: "-5px",
                         minHeight: "30px",
                         backgroundColor: "#1E1F26",
@@ -697,6 +694,15 @@ const RecitationContainer = () => {
               >
                 Become a developer click here
               </Button>
+            </Box>
+            <Box sx={{ marginTop: "10px", textAlign: "center",fontSize: "14px" }}>
+              <p style={{ color: "#fff", textAlign: "center", margin: "0" }}>
+                The English version of the Quran Jason is taken from </p>
+              <a href="https://cdn.jsdelivr.net/npm/quran-json@3.1.2/dist/quran_en.json"
+                target="_blank"
+                rel="noopener noreferrer" style={{ color: "#fff", }}>
+                this reference
+              </a>
             </Box>
           </Box>
         )}
