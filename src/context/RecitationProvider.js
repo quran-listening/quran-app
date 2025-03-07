@@ -60,11 +60,13 @@ export const RecitationProvider = ({ children }) => {
   const AllahoHoAkbarFoundRef = useRef(false);
   const ttsRate = useRef(1.0);
   const lastAyahProcessedRef = useRef(false);
-  const emptyResultsCounter = useRef(false);
+  const emptyResultsCounter = useRef(0);
+  const currentVerseIndexRef = useRef(0);
+  const startTime = useRef(null);
+
 
   // "Next verse" matching
   const [rollingWindow, setRollingWindow] = useState([]);
-  const [currentVerseIndex, setCurrentVerseIndex] = useState(0);
   const ROLLING_WINDOW_SIZE = 2;
 
   // For displaying previously matched verses
@@ -79,7 +81,6 @@ export const RecitationProvider = ({ children }) => {
   const [matchesFound, setMatchesFound] = useState(true);
 
   // Time tracking
-  const [startTime, setStartTime] = useState(null);
   const [pauseStartTime, setPauseStartTime] = useState(null);
   const [totalPausedTime, setTotalPausedTime] = useState(0);
   const [totalArabicWords, setTotalArabicWords] = useState(0);
@@ -91,6 +92,8 @@ export const RecitationProvider = ({ children }) => {
 
   // Quran data
   const [quranData] = useState(quran_eng);
+
+  let debounceTimeout;
 
   // --------------- 1) Create Fuse for Surah detection ---------------
 
@@ -111,27 +114,45 @@ export const RecitationProvider = ({ children }) => {
     });
 
     versesList.current = verses;
-
-    const fuseInstance = fuseInstanceFn(versesList.current, 0.2);
-    setFuse(fuseInstance);
-    fuseRef.current = fuseInstance;
   }, [surahData]);
 
   // --------------- 2) Adjust TTS Speed ---------------
   const adjustTtsSpeed = (wordsCount, elapsedTimeMs) => {
-    if (!checkdCheckBox) return; // user disabled "auto"
-    if (!wordsCount || elapsedTimeMs <= 1000) return;
+    if (!wordsCount || elapsedTimeMs <= 0) {
+      return;
+    }
 
-    const wpm = wordsCount / (elapsedTimeMs / 60000); // words per minute
+    const MIN_ELAPSED_TIME_MS = 1000; // Minimum 1 second
+    if (elapsedTimeMs < MIN_ELAPSED_TIME_MS) {
+      return;
+    }
+
+    // Convert to minutes and ensure we don't divide by extremely small numbers
+    const minutes = elapsedTimeMs / 60000;
+    const wpm = wordsCount / minutes;
+    console.log("wpm", wpm);
+
+    if (!checkdCheckBox) {
+      return;
+    }
+
     let newRate = 1.0;
-    if (wpm > 200) newRate = 2.0;
-    else if (wpm > 150) newRate = 1.75;
-    else if (wpm > 120) newRate = 1.5;
-    else if (wpm > 100) newRate = 1.25;
-    else if (wpm > 70) newRate = 1.0;
-    else newRate = 0.85;
+    if (wpm > 200) {
+      newRate = 2.0;
+    } else if (wpm > 100) {
+      newRate = 1.75;
+    } else if (wpm > 90) {
+      newRate = 1.5;
+    } else if (wpm > 80) {
+      newRate = 1.25;
+    } else if (wpm > 60) {
+      newRate = 1.0;
+    } else {
+      newRate = 0.85;
+    }
 
     ttsRate.current = newRate;
+    console.log("Final values - WPM:", wpm, "New rate:", newRate);
   };
 
   // --------------- 4) Wrappers for recitationHelpers ---------------
@@ -144,7 +165,7 @@ export const RecitationProvider = ({ children }) => {
       surahId,
       currentSurahData,
       rollingWindowRef,
-      setCurrentVerseIndex,
+      currentVerseIndexRef,
       setRollingWindow,
       translationRecognizedTextRef,
       setTranslations,
@@ -180,7 +201,7 @@ export const RecitationProvider = ({ children }) => {
   };
 
   const doSpeakTranslation = (textToSpeak) => {
-    speakTranslation(textToSpeak, {
+    speakTranslation(textToSpeak,{
       isMutedRef,
       ttsRate,
       language,
@@ -188,126 +209,121 @@ export const RecitationProvider = ({ children }) => {
   };
 
   const checkForMatches = (transcript) => {
-    const AllahoakbarTranscript = "الله اكبر";
-    const Allahoakbar = "اللّٰهُ أَكْبَرْ";
-    const AllahoakbarTranslation = "Allah is the Greatest";
-    if (
-      transcript?.includes(AllahoakbarTranscript) &&
-      !AllahoHoAkbarFoundRef.current
-    ) {
-      speakTranslation(AllahoakbarTranslation, {
-        isMutedRef,
-        ttsRate: ttsRate.current,
-        language,
-      });
-      setPreviousAyaList((prev) => [
-        ...prev,
-        {
-          surahId: 0,
-          verseId: 0,
-          text: Allahoakbar,
-          translation: AllahoakbarTranslation,
-        },
-      ]);
-      AllahoHoAkbarFoundRef.current = true;
-      setTimeout(() => {
-        resetter();
-        AllahoHoAkbarFoundRef.current = false;
-      }, [2000]);
-      return;
-    }
-    // Split on any whitespace and remove empty entries
-    const words = transcript.trim().split(/\s+/).filter(Boolean);
-    if (words.length < 3) {
-      return;
-    }
-
-    if (!surahFlag.current && surahId.current < 1) {
-      // Initialize word queue for progressive matching
-      let wordQueue = [];
-      let matchFound = false;
-
-      // Try matching with increasing number of words
-      for (let i = 0; i < words.length && !matchFound; i++) {
-        wordQueue.push(words[i]);
-        const searchPhrase = wordQueue.join(" ");
-        const normalizedPhrase = normalizeArabicText(searchPhrase);
-        const fuseResults = fuseRef.current?.search(normalizedPhrase);
-
-        if (fuseResults && fuseResults.length > 0) {
-          if (fuseResults.length === 1) {
-            // Unique match found
-            matchFound = true;
-            const foundItem = fuseResults[0].item;
-            if (foundItem?.id === 0) {
-              // bismillahDetection detected
-              if (!bismillahFoundRef.current) {
-                bismillahFoundRef.current = true;
-                const bismillahTranscript =
-                  "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ";
-                bismillahDetection(bismillahTranscript, doSpeakTranslation, {
-                  translationsArray,
-                  lastAyahIdRef,
-                  translationRecognizedTextRef,
-                  setTranslations,
-                  accumulatedTranscriptRef,
-                  setPreviousAyaList,
-                  isMutedRef,
-                  ttsRate: ttsRate.current,
-                  language,
-                  recognitionRef,
-                });
-                wordQueue = [];
-                recognitionRef.current.stop();
-                return;
-              }
-            } else {
-              AllahoHoAkbarFoundRef.current = false;
-              bismillahFoundRef.current = false;
-              const surahDataItem = quranData[foundItem.id - 1];
-              currentSurahData.current = surahDataItem;
-
-              setSurahName(foundItem?.name);
-              surahId.current = foundItem?.id;
-
-              // setPreviousAyaList((prev) => [
-              //   ...prev,
-              //   {
-              //     text: surahDataItem?.verses?.[0]?.text,
-              //     translation: surahDataItem?.verses?.[0]?.translation,
-              //     surahId: surahDataItem?.surahId,
-              //     verseId: surahDataItem?.verses?.[0]?.verseId,
-              //   },
-              // ]);
-              const newWindow = initRollingWindow(surahDataItem, 0);
-              console.log("newWindow", newWindow);
-              rollingWindowRef.current = newWindow;
-              lastAyahIdRef.current = surahDataItem?.verses?.[0]?.verseId;
-              surahFlag.current = true;
-              // speakTranslation(foundItem?.translation, {
-              //   isMutedRef,
-              //   ttsRate: ttsRate.current,
-              //   language,
-              // });
-              // Initialize rolling window
-
-              break;
-            }
-            // Set states for the found surah
-          } else {
-            console.log(`Found ${fuseResults.length} matches, continuing...`);
-          }
-        } else if (i === words.length - 1) {
-          // No matches found after trying all words
-          console.log("No surah match found, searching whole Quran...");
-          doSearchInWholeQuran(transcript);
-        }
+    
+      const AllahoakbarTranscript = "الله اكبر";
+      const Allahoakbar = "اللّٰهُ أَكْبَرْ";
+      const AllahoakbarTranslation = "Allah is the Greatest";
+      if (
+        transcript?.includes(AllahoakbarTranscript) &&
+        !AllahoHoAkbarFoundRef.current
+      ) {
+        speakTranslation(AllahoakbarTranslation, {
+          isMutedRef,
+          ttsRate: ttsRate.current,
+          language,
+        });
+        setPreviousAyaList((prev) => [
+          ...prev,
+          {
+            surahId: 0,
+            verseId: 0,
+            text: Allahoakbar,
+            translation: AllahoakbarTranslation,
+          },
+        ]);
+        AllahoHoAkbarFoundRef.current = true;
+        setTimeout(() => {
+          resetter();
+          AllahoHoAkbarFoundRef.current = false;
+        }, [2000]);
+        return;
       }
-    } else {
-      // We already have a Surah => check rolling window for next verse
-      console.log("Surah already detected, proceeding to process");
-      doProcessRecognition(transcript);
-    }
+
+
+      
+      // Split on any whitespace and remove empty entries
+      const words = transcript.trim().split(/\s+/).filter(Boolean);
+      if (words.length < 3) {
+        startTime.current = new Date();
+      } else {
+        adjustTtsSpeed();
+      }
+      if (words.length < 3) {
+        return;
+      }else if (!surahFlag.current && surahId.current < 1) {
+        // Initialize word queue for progressive matching
+        let wordQueue = [];
+        let matchFound = false;
+
+        // Try matching with increasing number of words
+        for (let i = 0; i < words.length && !matchFound; i++) {
+          wordQueue.push(words[i]);
+          const searchPhrase = wordQueue.join(" ");
+          const fuseInstance = fuseInstanceFn(versesList.current, 0.2);
+          const normalizedPhrase = normalizeArabicText(searchPhrase);
+          const fuseResults = fuseInstance?.search(normalizedPhrase);
+          console.log("fuseResults", fuseResults);
+          if (fuseResults && fuseResults.length > 0) {
+            if (fuseResults.length === 1) {
+              // Unique match found
+              matchFound = true;
+
+              const foundItem = fuseResults[0].item;
+              console.log("foundItem", foundItem);
+              if (foundItem?.id === 0) {
+                // bismillahDetection detected
+                if (!bismillahFoundRef.current) {
+                  bismillahFoundRef.current = true;
+                  const bismillahTranscript =
+                    "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ";
+                  bismillahDetection(bismillahTranscript, doSpeakTranslation, {
+                    translationsArray,
+                    lastAyahIdRef,
+                    translationRecognizedTextRef,
+                    setTranslations,
+                    accumulatedTranscriptRef,
+                    setPreviousAyaList,
+                    isMutedRef,
+                    ttsRate: ttsRate.current,
+                    language,
+                    recognitionRef,
+                  });
+                  wordQueue = [];
+                  recognitionRef.current.stop();
+                  return;
+                }
+              } else {
+                AllahoHoAkbarFoundRef.current = false;
+                bismillahFoundRef.current = false;
+                const surahDataItem = quranData[foundItem?.id - 1];
+                console.log("surahDataItem", surahDataItem);
+                currentSurahData.current = surahDataItem;
+
+                setSurahName(foundItem?.name);
+                surahId.current = foundItem?.id;
+
+                // Initialize rolling window
+                const newWindow = initRollingWindow(surahDataItem, 0);
+                rollingWindowRef.current = newWindow;
+                lastAyahIdRef.current = surahDataItem?.verses?.[0]?.verseId;
+                surahFlag.current = true;
+                break;
+              }
+              // Set states for the found surah
+            } else {
+              console.log(`Found ${fuseResults.length} matches, continuing...`);
+            }
+          } else if (i === words.length - 1 || fuseResults?.length === 0) {
+            // No matches found after trying all words
+            console.log("No surah match found, searching whole Quran...");
+            doSearchInWholeQuran(transcript);
+          }
+        }
+      } else {
+        // We already have a Surah => check rolling window for next verse
+        console.log("Surah already detected, proceeding to process");
+        doProcessRecognition(transcript);
+      }
   };
 
   const stopRecognitionAndReset = () => {
@@ -315,17 +331,17 @@ export const RecitationProvider = ({ children }) => {
   };
 
   const resetter = () => {
-    console.log("resetter called");
-    stopRecognition();
-
+    console.log("resetter called")
+    // stopRecognition();
+    isListeningRef.current = false;
     // Reset recognized text
     setRecognizedText("");
 
-    setCurrentVerseIndex(0);
-    setRollingWindow([]);
+    currentVerseIndexRef.current = 0;
+    // setRollingWindow([]);
 
     // Reset times
-    setStartTime(null);
+    startTime.current = null;
     setPauseStartTime(null);
     setTotalPausedTime(0);
     setTotalArabicWords(0);
@@ -335,6 +351,7 @@ export const RecitationProvider = ({ children }) => {
     rollingWindowRef.current = [];
     currentSurahData.current = null;
     processedVersesRef.current = new Set();
+   
   };
 
   // --------------- 6) Mute/unmute TTS ---------------
@@ -380,7 +397,6 @@ export const RecitationProvider = ({ children }) => {
     totalPausedTime,
     setTotalPausedTime,
     startTime,
-    setStartTime,
     checkForMatches,
     adjustTtsSpeed,
     matchesFound,
@@ -407,7 +423,7 @@ export const RecitationProvider = ({ children }) => {
     rollingWindow,
     currentSurahData,
     rollingWindowRef,
-    currentVerseIndex,
+    currentVerseIndexRef,
     previousAyaList,
     ttsRate,
     isMutedRef,
