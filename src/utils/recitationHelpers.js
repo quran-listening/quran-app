@@ -186,7 +186,7 @@ export const loadNextChunk = (
  * @param {object} params
  * @returns Promise that resolves when TTS finishes
  */
-export function speakTranslation(text, resetter, { isMutedRef, ttsRate, language  }) {
+export function speakTranslation(text,  { isMutedRef, ttsRate, language  }) {
   const synth = window.speechSynthesis;
   if (!synth) {
     console.error("Speech synthesis not supported");
@@ -196,10 +196,13 @@ export function speakTranslation(text, resetter, { isMutedRef, ttsRate, language
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.volume = isMutedRef.current ? 0 : 1;
   utterance.lang = "en-US"; // Set to English
-  const rate =
+  const finalRate =
     typeof ttsRate === "object" && ttsRate.current ? ttsRate.current : ttsRate;
-  utterance.rate = Number(rate);
+
+  utterance.rate = Number(finalRate);
   utterance.pitch = 1.0; // Normal pitch
+
+  console.log("==> Speaking with TTS rate:", utterance.rate);
 
   utterance.onstart = () => console.log("Started speaking");
   utterance.onend = () => {
@@ -312,7 +315,7 @@ export const processRecognition = (transcript, resetter, params) => {
         !isRepeatedVerse
       ) {
         console.log("calling speak translation function");
-        speakTranslation(el?.translation, resetter, {
+        speakTranslation(el?.translation, {
           isMutedRef,
           ttsRate: ttsRate.current,
           language,
