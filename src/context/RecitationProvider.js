@@ -62,6 +62,8 @@ export const RecitationProvider = ({ children }) => {
   const lastAyahProcessedRef = useRef(false);
   const emptyResultsCounter = useRef(0);
   const currentVerseIndexRef = useRef(0);
+  const startTime = useRef(null);
+
 
   // "Next verse" matching
   const [rollingWindow, setRollingWindow] = useState([]);
@@ -79,7 +81,6 @@ export const RecitationProvider = ({ children }) => {
   const [matchesFound, setMatchesFound] = useState(true);
 
   // Time tracking
-  const [startTime, setStartTime] = useState(null);
   const [pauseStartTime, setPauseStartTime] = useState(null);
   const [totalPausedTime, setTotalPausedTime] = useState(0);
   const [totalArabicWords, setTotalArabicWords] = useState(0);
@@ -117,19 +118,41 @@ export const RecitationProvider = ({ children }) => {
 
   // --------------- 2) Adjust TTS Speed ---------------
   const adjustTtsSpeed = (wordsCount, elapsedTimeMs) => {
-    if (!checkdCheckBox) return; // user disabled "auto"
-    if (!wordsCount || elapsedTimeMs <= 1000) return;
+    if (!wordsCount || elapsedTimeMs <= 0) {
+      return;
+    }
 
-    const wpm = wordsCount / (elapsedTimeMs / 60000); // words per minute
+    const MIN_ELAPSED_TIME_MS = 1000; // Minimum 1 second
+    if (elapsedTimeMs < MIN_ELAPSED_TIME_MS) {
+      return;
+    }
+
+    // Convert to minutes and ensure we don't divide by extremely small numbers
+    const minutes = elapsedTimeMs / 60000;
+    const wpm = wordsCount / minutes;
+    console.log("wpm", wpm);
+
+    if (!checkdCheckBox) {
+      return;
+    }
+
     let newRate = 1.0;
-    if (wpm > 200) newRate = 2.0;
-    else if (wpm > 150) newRate = 1.75;
-    else if (wpm > 120) newRate = 1.5;
-    else if (wpm > 100) newRate = 1.25;
-    else if (wpm > 70) newRate = 1.0;
-    else newRate = 0.85;
+    if (wpm > 200) {
+      newRate = 2.0;
+    } else if (wpm > 100) {
+      newRate = 1.75;
+    } else if (wpm > 90) {
+      newRate = 1.5;
+    } else if (wpm > 80) {
+      newRate = 1.25;
+    } else if (wpm > 60) {
+      newRate = 1.0;
+    } else {
+      newRate = 0.85;
+    }
 
     ttsRate.current = newRate;
+    console.log("Final values - WPM:", wpm, "New rate:", newRate);
   };
 
   // --------------- 4) Wrappers for recitationHelpers ---------------
@@ -178,7 +201,7 @@ export const RecitationProvider = ({ children }) => {
   };
 
   const doSpeakTranslation = (textToSpeak) => {
-    speakTranslation(textToSpeak, resetter, {
+    speakTranslation(textToSpeak,{
       isMutedRef,
       ttsRate,
       language,
@@ -187,7 +210,6 @@ export const RecitationProvider = ({ children }) => {
 
   const checkForMatches = (transcript) => {
     
-    debounceTimeout = setTimeout(() => {
       const AllahoakbarTranscript = "الله اكبر";
       const Allahoakbar = "اللّٰهُ أَكْبَرْ";
       const AllahoakbarTranslation = "Allah is the Greatest";
@@ -216,8 +238,16 @@ export const RecitationProvider = ({ children }) => {
         }, [2000]);
         return;
       }
+
+
+      
       // Split on any whitespace and remove empty entries
       const words = transcript.trim().split(/\s+/).filter(Boolean);
+      if (words.length < 3) {
+        startTime.current = new Date();
+      } else {
+        adjustTtsSpeed();
+      }
       if (words.length < 3) {
         return;
       }else if (!surahFlag.current && surahId.current < 1) {
@@ -294,7 +324,6 @@ export const RecitationProvider = ({ children }) => {
         console.log("Surah already detected, proceeding to process");
         doProcessRecognition(transcript);
       }
-    }, 300);
   };
 
   const stopRecognitionAndReset = () => {
@@ -303,7 +332,7 @@ export const RecitationProvider = ({ children }) => {
 
   const resetter = () => {
     console.log("resetter called")
-    stopRecognition();
+    // stopRecognition();
     isListeningRef.current = false;
     // Reset recognized text
     setRecognizedText("");
@@ -312,7 +341,7 @@ export const RecitationProvider = ({ children }) => {
     // setRollingWindow([]);
 
     // Reset times
-    setStartTime(null);
+    startTime.current = null;
     setPauseStartTime(null);
     setTotalPausedTime(0);
     setTotalArabicWords(0);
@@ -322,9 +351,7 @@ export const RecitationProvider = ({ children }) => {
     rollingWindowRef.current = [];
     currentSurahData.current = null;
     processedVersesRef.current = new Set();
-
-    // Immediately check for matches after reset
-    checkForMatches(accumulatedTranscriptRef.current);
+   
   };
 
   // --------------- 6) Mute/unmute TTS ---------------
@@ -370,7 +397,6 @@ export const RecitationProvider = ({ children }) => {
     totalPausedTime,
     setTotalPausedTime,
     startTime,
-    setStartTime,
     checkForMatches,
     adjustTtsSpeed,
     matchesFound,
