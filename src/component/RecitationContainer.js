@@ -695,6 +695,15 @@ const RecitationContainer = () => {
                 Become a developer click here
               </Button>
             </Box>
+            <Box sx={{ marginTop: "10px", textAlign: "center",fontSize: "14px" }}>
+              <p style={{ color: "#fff", textAlign: "center", margin: "0" }}>
+                The English version of the Quran Jason is taken from </p>
+              <a href="https://cdn.jsdelivr.net/npm/quran-json@3.1.2/dist/quran_en.json"
+                target="_blank"
+                rel="noopener noreferrer" style={{ color: "#fff", }}>
+                this reference
+              </a>
+            </Box>
           </Box>
         )}
       </Box>
