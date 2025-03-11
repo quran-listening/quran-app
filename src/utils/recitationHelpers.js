@@ -215,12 +215,7 @@ export const initRollingWindow = (surahData, startIndex) => {
 
 // Update processRecognition to use the rolling window
 
-export const updateRollingWindow = (
-  currentWindow,
-  surahData,
-  verseId,
-  searchInWholeQuran
-) => {
+export const updateRollingWindow = (surahData, verseId) => {
   // Calculate remaining verses
   const remainingVerses = surahData?.verses?.length - verseId;
 
@@ -231,7 +226,7 @@ export const updateRollingWindow = (
     return remainingWindow;
   }
   const nextOne = surahData?.verses?.slice(verseId, verseId + 1);
-  console.log("surahData?.verses",nextOne)
+  console.log("surahData?.verses", nextOne);
 
   return nextOne;
 };
@@ -329,15 +324,16 @@ export const processRecognition = (transcript, resetter, params) => {
     lastAyahIdRef.current = el?.verseId;
     // Slide window forward after processing verse
     rollingWindowRef.current = updateRollingWindow(
-      currentWindow,
       currentSurahData.current,
-      el?.verseId,
-      searchInWholeQuran
+      el?.verseId
     );
 
     // Early exit: break the loop if the last verse is reached
     if (lastAyahIdRef.current === currentSurahData?.current?.verses?.length) {
       lastAyahProcessedRef.current = true;
+      // setTimeout(() => {
+      //   resetter();
+      // }, 4000);
       break;
     }
   }
@@ -403,4 +399,15 @@ export const findMultipleMatches = (transcript, fuseInstance) => {
     }
   }
   return matches;
+};
+
+export const removeNonArabicWords = (text) => {
+  // This regex matches Arabic characters, diacritics, and Arabic numerals
+  const arabicRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0660-\u0669\u06F0-\u06F9\u064B-\u065F\u0670]+/g;
+  
+  // Find all Arabic words
+  const arabicWords = text.match(arabicRegex);
+  
+  // Return Arabic words joined by spaces, or empty string if no Arabic words found
+  return arabicWords ? arabicWords.join(' ') : '';
 };
