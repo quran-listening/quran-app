@@ -14,6 +14,7 @@ import {
   processRecognition,
   bismillahDetection,
   initRollingWindow,
+  removeNonArabicWords,
 } from "../utils/recitationHelpers";
 
 // Utilities
@@ -60,10 +61,12 @@ export const RecitationProvider = ({ children }) => {
   const AllahoHoAkbarFoundRef = useRef(false);
   const ttsRate = useRef(1.0);
   const lastAyahProcessedRef = useRef(false);
+  const noTranscriptTimeoutRef = useRef(null);
+  const lastTranscriptTimeRef = useRef(Date.now());
   const emptyResultsCounter = useRef(0);
   const currentVerseIndexRef = useRef(0);
   const startTime = useRef(null);
-
+  const checkdCheckBoxRef = useRef(true);
 
   // "Next verse" matching
   const [rollingWindow, setRollingWindow] = useState([]);
@@ -116,6 +119,10 @@ export const RecitationProvider = ({ children }) => {
     versesList.current = verses;
   }, [surahData]);
 
+  // Update the ref whenever the state changes
+  useEffect(() => {
+    checkdCheckBoxRef.current = checkdCheckBox;
+  }, [checkdCheckBox]);
   // --------------- 2) Adjust TTS Speed ---------------
   const adjustTtsSpeed = (wordsCount, elapsedTimeMs) => {
     if (!wordsCount || elapsedTimeMs <= 0) {
@@ -127,14 +134,13 @@ export const RecitationProvider = ({ children }) => {
       return;
     }
 
+    if (!checkdCheckBoxRef.current) {
+      return;
+    }
+
     // Convert to minutes and ensure we don't divide by extremely small numbers
     const minutes = elapsedTimeMs / 60000;
     const wpm = wordsCount / minutes;
-    console.log("wpm", wpm);
-
-    if (!checkdCheckBox) {
-      return;
-    }
 
     let newRate = 1.0;
     if (wpm > 200) {
@@ -201,129 +207,155 @@ export const RecitationProvider = ({ children }) => {
   };
 
   const doSpeakTranslation = (textToSpeak) => {
-    speakTranslation(textToSpeak,{
+    speakTranslation(textToSpeak, {
       isMutedRef,
       ttsRate,
       language,
     });
   };
 
-  const checkForMatches = (transcript) => {
-    
-      const AllahoakbarTranscript = "الله اكبر";
-      const Allahoakbar = "اللّٰهُ أَكْبَرْ";
-      const AllahoakbarTranslation = "Allah is the Greatest";
-      if (
-        transcript?.includes(AllahoakbarTranscript) &&
-        !AllahoHoAkbarFoundRef.current
-      ) {
-        speakTranslation(AllahoakbarTranslation, {
-          isMutedRef,
-          ttsRate: ttsRate.current,
-          language,
-        });
-        setPreviousAyaList((prev) => [
-          ...prev,
-          {
-            surahId: 0,
-            verseId: 0,
-            text: Allahoakbar,
-            translation: AllahoakbarTranslation,
-          },
-        ]);
-        AllahoHoAkbarFoundRef.current = true;
-        setTimeout(() => {
-          resetter();
-          AllahoHoAkbarFoundRef.current = false;
-        }, [2000]);
-        return;
-      }
+  const handleNoTranscriptTimeout = () => {
+    const currentTime = Date.now();
+    const timeSinceLastTranscript = currentTime - lastTranscriptTimeRef.current;
 
+    if (timeSinceLastTranscript >= 3000) {
+      // 10 seconds
+      console.log("No transcript for 5 seconds, resetting...");
+      resetter();
+    } else {
+      // Schedule next check
+      noTranscriptTimeoutRef.current = setTimeout(
+        handleNoTranscriptTimeout,
+        1000
+      );
+    }
+  };
 
-      
-      // Split on any whitespace and remove empty entries
-      const words = transcript.trim().split(/\s+/).filter(Boolean);
-      if (words.length < 3) {
-        startTime.current = new Date();
-      } else {
-        adjustTtsSpeed();
-      }
-      if (words.length < 3) {
-        return;
-      }else if (!surahFlag.current && surahId.current < 1) {
-        // Initialize word queue for progressive matching
-        let wordQueue = [];
-        let matchFound = false;
+  const checkForMatches = (main_transcript) => {
+    // Clean the transcript to only include Arabic words
+    const transcript = removeNonArabicWords(main_transcript);
+    // Update last transcript time
+    lastTranscriptTimeRef.current = Date.now();
+    // Clear existing timeout and set a new one
+    if (noTranscriptTimeoutRef.current) {
+      clearTimeout(noTranscriptTimeoutRef.current);
+    }
+    noTranscriptTimeoutRef.current = setTimeout(
+      handleNoTranscriptTimeout,
+      1000
+    );
+    const AllahoakbarTranscript = "الله اكبر";
+    const Allahoakbar = "اللّٰهُ أَكْبَرْ";
+    const AllahoakbarTranslation = "Allah is the Greatest";
+    if (
+      transcript?.includes(AllahoakbarTranscript) &&
+      !AllahoHoAkbarFoundRef.current
+    ) {
+      speakTranslation(AllahoakbarTranslation, {
+        isMutedRef,
+        ttsRate: ttsRate.current,
+        language,
+      });
+      setPreviousAyaList((prev) => [
+        ...prev,
+        {
+          surahId: 0,
+          verseId: 0,
+          text: Allahoakbar,
+          translation: AllahoakbarTranslation,
+        },
+      ]);
+      AllahoHoAkbarFoundRef.current = true;
+      setTimeout(() => {
+        resetter();
+        AllahoHoAkbarFoundRef.current = false;
+      }, [2000]);
+      return;
+    }
 
-        // Try matching with increasing number of words
-        for (let i = 0; i < words.length && !matchFound; i++) {
-          wordQueue.push(words[i]);
-          const searchPhrase = wordQueue.join(" ");
-          const fuseInstance = fuseInstanceFn(versesList.current, 0.2);
-          const normalizedPhrase = normalizeArabicText(searchPhrase);
-          const fuseResults = fuseInstance?.search(normalizedPhrase);
-          console.log("fuseResults", fuseResults);
-          if (fuseResults && fuseResults.length > 0) {
-            if (fuseResults.length === 1) {
-              // Unique match found
-              matchFound = true;
+    // Split on any whitespace and remove empty entries
+    const words = transcript.trim().split(/\s+/).filter(Boolean);
+    if (words.length < 3) {
+      startTime.current = new Date();
+    } else {
+      adjustTtsSpeed();
+    }
+    if (words.length < 3) {
+      return;
+    } else if (!surahFlag.current && surahId.current < 1) {
+      // Initialize word queue for progressive matching
+      let wordQueue = [];
+      let matchFound = false;
 
-              const foundItem = fuseResults[0].item;
-              console.log("foundItem", foundItem);
-              if (foundItem?.id === 0) {
-                // bismillahDetection detected
-                if (!bismillahFoundRef.current) {
-                  bismillahFoundRef.current = true;
-                  const bismillahTranscript =
-                    "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ";
-                  bismillahDetection(bismillahTranscript, doSpeakTranslation, {
-                    translationsArray,
-                    lastAyahIdRef,
-                    translationRecognizedTextRef,
-                    setTranslations,
-                    accumulatedTranscriptRef,
-                    setPreviousAyaList,
-                    isMutedRef,
-                    ttsRate: ttsRate.current,
-                    language,
-                    recognitionRef,
-                  });
-                  wordQueue = [];
-                  recognitionRef.current.stop();
-                  return;
-                }
-              } else {
-                AllahoHoAkbarFoundRef.current = false;
-                bismillahFoundRef.current = false;
-                const surahDataItem = quranData[foundItem?.id - 1];
-                console.log("surahDataItem", surahDataItem);
-                currentSurahData.current = surahDataItem;
+      // Try matching with increasing number of words
+      for (let i = 0; i < words.length && !matchFound; i++) {
+        wordQueue.push(words[i]);
+        const searchPhrase = wordQueue.join(" ");
+        const fuseInstance = fuseInstanceFn(versesList.current, 0.2);
+        const normalizedPhrase = normalizeArabicText(searchPhrase);
+        const fuseResults = fuseInstance?.search(normalizedPhrase);
+        console.log("fuseResults", fuseResults);
+        if (fuseResults && fuseResults.length > 0) {
+          if (fuseResults.length === 1) {
+            // Unique match found
+            matchFound = true;
 
-                setSurahName(foundItem?.name);
-                surahId.current = foundItem?.id;
-
-                // Initialize rolling window
-                const newWindow = initRollingWindow(surahDataItem, 0);
-                rollingWindowRef.current = newWindow;
-                lastAyahIdRef.current = surahDataItem?.verses?.[0]?.verseId;
-                surahFlag.current = true;
-                break;
+            const foundItem = fuseResults[0].item;
+            console.log("foundItem", foundItem);
+            if (foundItem?.id === 0) {
+              // bismillahDetection detected
+              if (!bismillahFoundRef.current) {
+                bismillahFoundRef.current = true;
+                const bismillahTranscript =
+                  "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ";
+                bismillahDetection(bismillahTranscript, doSpeakTranslation, {
+                  translationsArray,
+                  lastAyahIdRef,
+                  translationRecognizedTextRef,
+                  setTranslations,
+                  accumulatedTranscriptRef,
+                  setPreviousAyaList,
+                  isMutedRef,
+                  ttsRate: ttsRate.current,
+                  language,
+                  recognitionRef,
+                });
+                wordQueue = [];
+                recognitionRef.current.stop();
+                return;
               }
-              // Set states for the found surah
             } else {
-              console.log(`Found ${fuseResults.length} matches, continuing...`);
+              AllahoHoAkbarFoundRef.current = false;
+              bismillahFoundRef.current = false;
+              const surahDataItem = quranData[foundItem?.id - 1];
+              console.log("surahDataItem", surahDataItem);
+              currentSurahData.current = surahDataItem;
+
+              setSurahName(foundItem?.name);
+              surahId.current = foundItem?.id;
+
+              // Initialize rolling window
+              const newWindow = initRollingWindow(surahDataItem, 0);
+              rollingWindowRef.current = newWindow;
+              lastAyahIdRef.current = surahDataItem?.verses?.[0]?.verseId;
+              surahFlag.current = true;
+              break;
             }
-          } else if (i === words.length - 1 || fuseResults?.length === 0) {
-            // No matches found after trying all words
-            console.log("No surah match found, searching whole Quran...");
-            doSearchInWholeQuran(transcript);
+            // Set states for the found surah
+          } else {
+            console.log(`Found ${fuseResults.length} matches, continuing...`);
           }
+        } else if (i === words.length - 1 || fuseResults?.length === 0) {
+          // No matches found after trying all words
+          console.log("No surah match found, searching whole Quran...");
+          doSearchInWholeQuran(transcript);
         }
-      } else {
-        // We already have a Surah => check rolling window for next verse
-        console.log("Surah already detected, proceeding to process");
-        doProcessRecognition(transcript);
       }
+    } else {
+      // We already have a Surah => check rolling window for next verse
+      console.log("Surah already detected, proceeding to process");
+      doProcessRecognition(transcript);
+    }
   };
 
   const stopRecognitionAndReset = () => {
@@ -331,9 +363,14 @@ export const RecitationProvider = ({ children }) => {
   };
 
   const resetter = () => {
-    console.log("resetter called")
+    console.log("resetter called");
+    // Clear the timeout
+    if (noTranscriptTimeoutRef.current) {
+      clearTimeout(noTranscriptTimeoutRef.current);
+      noTranscriptTimeoutRef.current = null;
+    }
     // stopRecognition();
-    isListeningRef.current = false;
+
     // Reset recognized text
     setRecognizedText("");
 
@@ -351,7 +388,6 @@ export const RecitationProvider = ({ children }) => {
     rollingWindowRef.current = [];
     currentSurahData.current = null;
     processedVersesRef.current = new Set();
-   
   };
 
   // --------------- 6) Mute/unmute TTS ---------------
@@ -361,6 +397,14 @@ export const RecitationProvider = ({ children }) => {
 
   // --------------- 7) Start + Stop Listening ---------------
   const startListening = () => {
+    // Reset the last transcript time when starting
+    lastTranscriptTimeRef.current = Date.now();
+
+    // Start the timeout check
+    noTranscriptTimeoutRef.current = setTimeout(
+      handleNoTranscriptTimeout,
+      1000
+    );
     // small TTS to un-block on iOS
     doSpeakTranslation(" ");
 
@@ -372,6 +416,11 @@ export const RecitationProvider = ({ children }) => {
   };
 
   const stopListening = () => {
+    // Clear the timeout
+    if (noTranscriptTimeoutRef.current) {
+      clearTimeout(noTranscriptTimeoutRef.current);
+      noTranscriptTimeoutRef.current = null;
+    }
     stopRecognition(); // from our custom hook
     isListeningRef.current = false;
     setFlag(false);
