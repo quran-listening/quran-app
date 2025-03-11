@@ -14,6 +14,7 @@ import {
   processRecognition,
   bismillahDetection,
   initRollingWindow,
+  removeNonArabicWords,
 } from "../utils/recitationHelpers";
 
 // Utilities
@@ -61,6 +62,8 @@ export const RecitationProvider = ({ children }) => {
   const ttsRate = useRef(1.0);
   const lastAyahProcessedRef = useRef(false);
   const emptyResultsCounter = useRef(false);
+  const noTranscriptTimeoutRef = useRef(null);
+  const lastTranscriptTimeRef = useRef(Date.now());
 
   // "Next verse" matching
   const [rollingWindow, setRollingWindow] = useState([]);
@@ -187,7 +190,36 @@ export const RecitationProvider = ({ children }) => {
     });
   };
 
-  const checkForMatches = (transcript) => {
+  const handleNoTranscriptTimeout = () => {
+    const currentTime = Date.now();
+    const timeSinceLastTranscript = currentTime - lastTranscriptTimeRef.current;
+
+    if (timeSinceLastTranscript >= 3000) {
+      // 10 seconds
+      console.log("No transcript for 5 seconds, resetting...");
+      resetter();
+    } else {
+      // Schedule next check
+      noTranscriptTimeoutRef.current = setTimeout(
+        handleNoTranscriptTimeout,
+        1000
+      );
+    }
+  };
+
+  const checkForMatches = (main_transcript) => {
+    // Clean the transcript to only include Arabic words
+    const transcript = removeNonArabicWords(main_transcript);
+    // Update last transcript time
+    lastTranscriptTimeRef.current = Date.now();
+    // Clear existing timeout and set a new one
+    if (noTranscriptTimeoutRef.current) {
+      clearTimeout(noTranscriptTimeoutRef.current);
+    }
+    noTranscriptTimeoutRef.current = setTimeout(
+      handleNoTranscriptTimeout,
+      1000
+    );
     const AllahoakbarTranscript = "الله اكبر";
     const Allahoakbar = "اللّٰهُ أَكْبَرْ";
     const AllahoakbarTranslation = "Allah is the Greatest";
@@ -316,7 +348,12 @@ export const RecitationProvider = ({ children }) => {
 
   const resetter = () => {
     console.log("resetter called");
-    stopRecognition();
+    // Clear the timeout
+    if (noTranscriptTimeoutRef.current) {
+      clearTimeout(noTranscriptTimeoutRef.current);
+      noTranscriptTimeoutRef.current = null;
+    }
+    // stopRecognition();
 
     // Reset recognized text
     setRecognizedText("");
@@ -344,6 +381,14 @@ export const RecitationProvider = ({ children }) => {
 
   // --------------- 7) Start + Stop Listening ---------------
   const startListening = () => {
+    // Reset the last transcript time when starting
+    lastTranscriptTimeRef.current = Date.now();
+
+    // Start the timeout check
+    noTranscriptTimeoutRef.current = setTimeout(
+      handleNoTranscriptTimeout,
+      1000
+    );
     // small TTS to un-block on iOS
     doSpeakTranslation(" ");
 
@@ -355,6 +400,11 @@ export const RecitationProvider = ({ children }) => {
   };
 
   const stopListening = () => {
+    // Clear the timeout
+    if (noTranscriptTimeoutRef.current) {
+      clearTimeout(noTranscriptTimeoutRef.current);
+      noTranscriptTimeoutRef.current = null;
+    }
     stopRecognition(); // from our custom hook
     isListeningRef.current = false;
     setFlag(false);
