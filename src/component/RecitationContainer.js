@@ -76,8 +76,8 @@ const RecitationContainer = () => {
   } = useMicrophone();
 
   const ayatListRef = useRef(null);
-  // const [ttsRateState, setTtsRateState] = useState(ttsRate.current);
-  const [ttsRateState, setTtsRateState] = useState(1.00);
+  const [ttsRateState, setTtsRateState] = useState(ttsRate.current);
+  // const [ttsRateState, setTtsRateState] = useState(1.00);
 
   const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent); // Detect iOS
 
@@ -114,6 +114,8 @@ const RecitationContainer = () => {
   };
 
   const handleCheckBoxChange = () => {
+    console.log("Checkbox clicked, current value:", checkdCheckBox);
+
     setCheckdCheckBox((prev) => !prev);
   };
 
@@ -138,6 +140,18 @@ const RecitationContainer = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ttsRate.current]);
+
+  useEffect(() => {
+    if (checkdCheckBox) {
+      setTtsRateState(1.0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkdCheckBox]);
+
+  useEffect(() => {
+    ttsRate.current = ttsRateState;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ttsRateState]);
 
   // Add effect to hide start text when Arabic is detected
   useEffect(() => {
@@ -185,7 +199,7 @@ const RecitationContainer = () => {
   const handleTTSRateChange = (change) => {
     const newRate = Math.max(1.0, Math.min(2.0, ttsRateState + change));
     setTtsRateState(newRate);
-    ttsRate.current = newRate;
+    // ttsRate.current = newRate;
   };
 
   // Render
@@ -327,6 +341,7 @@ const RecitationContainer = () => {
                     ...AyatBox,
                     resize: "vertical",
                     overflow: "auto",
+                    height: "300px", // Set fixed initial height
                     minHeight: "300px",
                     maxHeight: "80vh",
                     position: "relative", // Required for absolute positioning of pseudo-element
@@ -339,9 +354,6 @@ const RecitationContainer = () => {
                       width: "20px",
                       height: "20px",
                       cursor: "ns-resize",
-                      // Optional: add a visual indicator for the resize handle
-                      backgroundImage:
-                        "linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.1) 50%)",
                     },
                   }}
                   ref={ayatListRef}
@@ -352,7 +364,7 @@ const RecitationContainer = () => {
                         direction: "rtl",
                         color: "#fff",
                         position: "sticky",
-                        top: "-10px",
+                        top: "-11px",
                         right: "-5px",
                         minHeight: "30px",
                         backgroundColor: "#1E1F26",
@@ -744,6 +756,21 @@ const RecitationContainer = () => {
               >
                 Become a developer click here
               </Button>
+            </Box>
+            <Box
+              sx={{ marginTop: "10px", textAlign: "center", fontSize: "14px" }}
+            >
+              <p style={{ color: "#fff", textAlign: "center", margin: "0" }}>
+                The English version of the Quran Jason is taken from{" "}
+              </p>
+              <a
+                href="https://cdn.jsdelivr.net/npm/quran-json@3.1.2/dist/quran_en.json"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#fff" }}
+              >
+                this reference
+              </a>
             </Box>
           </Box>
         )}
