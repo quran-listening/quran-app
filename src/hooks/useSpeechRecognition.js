@@ -14,7 +14,6 @@ export default function useSpeechRecognition({
   totalPausedTime,
   setTotalPausedTime,
   startTime,
-  setStartTime,
   checkForMatches,
   adjustTtsSpeed,
   matchesFound,
@@ -30,7 +29,7 @@ export default function useSpeechRecognition({
   const accumulatedTranscriptRef = useRef(null);
 
   // How long to wait before stopping after silence
-  const RECITATION_SILENCE_TIMEOUT = 5000;
+  const RECITATION_SILENCE_TIMEOUT = 9000;
 
   useEffect(() => {
     const SpeechRecognition =
@@ -48,8 +47,11 @@ export default function useSpeechRecognition({
 
     recognition.onstart = () => {
       isListeningRef.current = true;
-      if (!startTime) setStartTime(new Date());
-      console.log("Speech recognition started.");
+      if (!startTime.current) {
+        startTime.current = Date.now();
+        setTotalPausedTime(0);
+      }
+      console.log("Speech recognition started. Start time:", startTime.current);
     };
 
     recognition.onresult = (event) => {
@@ -82,19 +84,27 @@ export default function useSpeechRecognition({
 
       // Count words
       if (finalNormalized.length > 0) {
-        // If user was paused, resume
         if (pauseStartTime) {
-          const pausedDuration = new Date() - pauseStartTime;
+          const pausedDuration = Date.now() - pauseStartTime;
           setTotalPausedTime((prev) => prev + pausedDuration);
           setPauseStartTime(null);
         }
         const recognizedWordsCount = countArabicWords(finalNormalized);
-        const elapsedTimeMs = new Date() - startTime - totalPausedTime;
+        const currentTime = Date.now();
+        const elapsedTimeMs = currentTime - startTime.current - totalPausedTime;
+        
+        console.log("Time tracking:", {
+          currentTime,
+          startTime: startTime.current,
+          totalPausedTime,
+          elapsedTimeMs
+        });
+        
         setTotalArabicWords(recognizedWordsCount);
         adjustTtsSpeed(recognizedWordsCount, elapsedTimeMs);
       } else {
         if (!pauseStartTime) {
-          setPauseStartTime(new Date());
+          setPauseStartTime(Date.now());
         }
       }
 
@@ -125,7 +135,10 @@ export default function useSpeechRecognition({
 
     recognition.onend = () => {
       console.log("Speech recognition ended.");
-      recognition.start();
+      setTimeout(()=>{
+        recognition.start();
+      },300)
+      
     };
 
     return () => {

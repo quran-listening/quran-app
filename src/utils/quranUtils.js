@@ -7,8 +7,12 @@ export function calculateSimilarity(str1, str2) {
   }
   
   /** Count Arabic words. Just splits on whitespace for simplicity. */
+  // export function countArabicWords(transcript) {
+  //   return transcript.trim().split(/\s+/).length;
+  // }
   export function countArabicWords(transcript) {
-    return transcript.trim().split(/\s+/).length;
+    const words = transcript.match(/\p{Script=Arabic}+/gu);
+    return words ? words.length : 0;
   }
 
   export const normatlizedData  = (currentWindow)=>{

@@ -19,7 +19,7 @@ export function searchInWholeQuran(
     surahId,
     setSurahName,
     currentSurahData,
-    setCurrentVerseIndex,
+    currentVerseIndexRef,
     rollingWindowRef,
     translationRecognizedTextRef,
     setTranslations,
@@ -48,7 +48,7 @@ export function searchInWholeQuran(
     setSurahName(foundSurahName);
     const surahDataItem = quranData[foundSurahId - 1];
     currentSurahData.current = surahDataItem;
-    setCurrentVerseIndex(verseIndexFound);
+    currentVerseIndexRef = verseIndexFound;
 
     const newWindow = initRollingWindow(surahDataItem, verseIndexFound);
     rollingWindowRef.current = newWindow;
@@ -196,13 +196,20 @@ export function speakTranslation(text, { isMutedRef, ttsRate, language }) {
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.volume = isMutedRef.current ? 0 : 1;
   utterance.lang = "en-US"; // Set to English
-  const rate =
+  const finalRate =
     typeof ttsRate === "object" && ttsRate.current ? ttsRate.current : ttsRate;
-  utterance.rate = Number(rate);
+
+  console.log("finalRate>>>", finalRate);
+
+  utterance.rate = Number(finalRate);
   utterance.pitch = 1.0; // Normal pitch
 
+  console.log("==> Speaking with TTS rate:", utterance.rate);
+
   utterance.onstart = () => console.log("Started speaking");
-  utterance.onend = () => console.log("Finished speaking");
+  utterance.onend = () => {
+    console.log("Finished speaking");
+  };
   utterance.onerror = (e) => console.error("Speech error:", e);
 
   synth.speak(utterance);
@@ -227,6 +234,7 @@ export const updateRollingWindow = (surahData, verseId) => {
   }
   const nextOne = surahData?.verses?.slice(verseId, verseId + 1);
   console.log("surahData?.verses", nextOne);
+  console.log("surahDataverses", nextOne, verseId);
 
   return nextOne;
 };
@@ -257,7 +265,7 @@ export const processRecognition = (transcript, resetter, params) => {
 
   // Get current rolling window verses
   const currentWindow = rollingWindowRef.current;
-
+  console.log("currentWindow", currentWindow);
   // Prepare searchable format for current window only
 
   const searchableVerses = currentWindow?.map((verse) => ({
@@ -268,23 +276,12 @@ export const processRecognition = (transcript, resetter, params) => {
   const normalizedTranscript = normalizeArabicText(transcript);
   const fuseInstance = fuseInstanceFn(searchableVerses, 0.3);
   const results = findMultipleMatches(normalizedTranscript, fuseInstance);
-  console.log("results", results);
-  // Check if results are empty and increment the counter
-  // if (results.length === 0) {
-  //   emptyResultsCounter.current = (emptyResultsCounter.current || 0) + 1; // Initialize if undefined
-  // } else {
-  //   emptyResultsCounter.current = 0; // Reset counter if results are found
-  // }
-
-  // // Call resetter if results are empty 4 times
-  // if (emptyResultsCounter.current >= 4) {
-  //   console.log("empty resetter called");
-  //   resetter();
-  //   emptyResultsCounter.current = 0;
-  // }
+  console.log("emptyResultsCounter.current", emptyResultsCounter.current);
 
   for (const el of results || []) {
-    if (processedVersesRef.current?.has(el?.verseId)) continue;
+    if (processedVersesRef.current?.has(el?.verseId)) {
+      continue;
+    }
 
     // Update the processed verses set with the new verseId
     processedVersesRef.current = new Set(processedVersesRef.current).add(
@@ -324,6 +321,7 @@ export const processRecognition = (transcript, resetter, params) => {
     lastAyahIdRef.current = el?.verseId;
     // Slide window forward after processing verse
     rollingWindowRef.current = updateRollingWindow(
+      // currentWindow,
       currentSurahData.current,
       el?.verseId
     );
@@ -339,9 +337,6 @@ export const processRecognition = (transcript, resetter, params) => {
   }
 
   if (lastAyahProcessedRef.current) {
-    translationRecognizedTextRef.current = "";
-    setTranslations([]);
-
     const synth = window.speechSynthesis;
     const lastTranslation =
       currentSurahData?.current?.verses[lastAyahIdRef.current - 1]?.translation;
@@ -352,18 +347,18 @@ export const processRecognition = (transcript, resetter, params) => {
       utterance.pitch = 1.0;
       utterance.volume = isMutedRef.current ? 0 : 1;
       utterance.onend = () => {
-        recognitionRef.current.stop();
+        lastAyahProcessedRef.current = false;
         resetter();
       };
-      lastAyahProcessedRef.current = false;
+
       synth.speak(utterance);
 
-      console.log("recognition refrence", recognitionRef.current.stop);
-
       recognitionRef.current.stop();
+      rollingWindowRef.current = [];
     } else {
-      // recognitionRef.current.stop();
-      // resetter();
+      recognitionRef.current.stop();
+      rollingWindowRef.current = [];
+      resetter();
     }
   }
 };
@@ -403,11 +398,12 @@ export const findMultipleMatches = (transcript, fuseInstance) => {
 
 export const removeNonArabicWords = (text) => {
   // This regex matches Arabic characters, diacritics, and Arabic numerals
-  const arabicRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0660-\u0669\u06F0-\u06F9\u064B-\u065F\u0670]+/g;
-  
+  const arabicRegex =
+    /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0660-\u0669\u06F0-\u06F9\u064B-\u065F\u0670]+/g;
+
   // Find all Arabic words
   const arabicWords = text.match(arabicRegex);
-  
+
   // Return Arabic words joined by spaces, or empty string if no Arabic words found
-  return arabicWords ? arabicWords.join(' ') : '';
+  return arabicWords ? arabicWords.join(" ") : "";
 };
