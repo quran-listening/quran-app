@@ -13,6 +13,8 @@ import {
 } from "@mui/joy";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import { useNavigate } from "react-router-dom";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
 
 import kalima from "../assets/img/kalima.svg";
 import mosque from "../assets/img/mosque2.svg";
@@ -75,6 +77,7 @@ const RecitationContainer = () => {
 
   const ayatListRef = useRef(null);
   const [ttsRateState, setTtsRateState] = useState(ttsRate.current);
+  // const [ttsRateState, setTtsRateState] = useState(1.00);
 
   const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent); // Detect iOS
 
@@ -111,6 +114,8 @@ const RecitationContainer = () => {
   };
 
   const handleCheckBoxChange = () => {
+    console.log("Checkbox clicked, current value:", checkdCheckBox);
+
     setCheckdCheckBox((prev) => !prev);
   };
 
@@ -130,9 +135,23 @@ const RecitationContainer = () => {
   }, [isMutedRef.current]);
 
   useEffect(() => {
-    setTtsRateState(ttsRate.current);
+    if (checkdCheckBox) {
+      setTtsRateState(ttsRate.current);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ttsRate.current]);
+
+  useEffect(() => {
+    if (checkdCheckBox) {
+      setTtsRateState(1.0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkdCheckBox]);
+
+  useEffect(() => {
+    ttsRate.current = ttsRateState;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ttsRateState]);
 
   // Add effect to hide start text when Arabic is detected
   useEffect(() => {
@@ -174,6 +193,13 @@ const RecitationContainer = () => {
 
   const handleDevClick = () => {
     navigate(`/dev`);
+  };
+
+  // Add handler for TTS rate changes
+  const handleTTSRateChange = (change) => {
+    const newRate = Math.max(1.0, Math.min(2.0, ttsRateState + change));
+    setTtsRateState(newRate);
+    // ttsRate.current = newRate;
   };
 
   // Render
@@ -559,10 +585,46 @@ const RecitationContainer = () => {
                     color: "#fff",
                   }}
                 >
-                  <Typography mr={1} sx={{ color: "#fff" }}>
+                  <Box mr={1} sx={{ color: "#fff", display: "flex" }}>
                     Time: {formatTime(elapsedTime)} | Translation Speed ={" "}
+                    {!checkdCheckBox && (
+                      <Box
+                        sx={{
+                          mx: 1,
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          border: "1px solid #fff",
+                          width: "20px",
+                          height: "20px",
+                          borderRadius: "5px",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => handleTTSRateChange(-0.1)}
+                      >
+                        <RemoveIcon sx={{ fontSize: "12px" }} />
+                      </Box>
+                    )}
                     {ttsRateState.toFixed(2)}
-                  </Typography>
+                    {!checkdCheckBox && (
+                      <Box
+                        sx={{
+                          ml: 1,
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          border: "1px solid #fff",
+                          width: "20px",
+                          height: "20px",
+                          borderRadius: "5px",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => handleTTSRateChange(0.1)}
+                      >
+                        <AddIcon sx={{ fontSize: "12px" }} />
+                      </Box>
+                    )}
+                  </Box>
                   <Checkbox
                     sx={{
                       color: "#fff",
@@ -695,12 +757,18 @@ const RecitationContainer = () => {
                 Become a developer click here
               </Button>
             </Box>
-            <Box sx={{ marginTop: "10px", textAlign: "center",fontSize: "14px" }}>
+            <Box
+              sx={{ marginTop: "10px", textAlign: "center", fontSize: "14px" }}
+            >
               <p style={{ color: "#fff", textAlign: "center", margin: "0" }}>
-                The English version of the Quran Jason is taken from </p>
-              <a href="https://cdn.jsdelivr.net/npm/quran-json@3.1.2/dist/quran_en.json"
+                The English version of the Quran Jason is taken from{" "}
+              </p>
+              <a
+                href="https://cdn.jsdelivr.net/npm/quran-json@3.1.2/dist/quran_en.json"
                 target="_blank"
-                rel="noopener noreferrer" style={{ color: "#fff", }}>
+                rel="noopener noreferrer"
+                style={{ color: "#fff" }}
+              >
                 this reference
               </a>
             </Box>
