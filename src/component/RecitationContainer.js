@@ -51,7 +51,7 @@ const RecitationContainer = () => {
     ttsRate,
     isMutedRef,
     checkdCheckBox,
-    matchesFound,
+    matchesFoundRef,
     flag,
 
     // Setters
@@ -86,6 +86,7 @@ const RecitationContainer = () => {
   // Add timer state near other state declarations
   const [elapsedTime, setElapsedTime] = useState(0);
   const [timerInterval, setTimerInterval] = useState(null);
+  const [matchesFound, setMatchesFound] = useState(true);
 
   const navigate = useNavigate();
 
@@ -97,6 +98,10 @@ const RecitationContainer = () => {
       });
     }
   }, [previousAyaList]);
+
+  useEffect(() => {
+    setMatchesFound(matchesFoundRef.current);
+  }, [matchesFoundRef.current]);
 
   // For date/time display
   const date = new Date();
@@ -360,7 +365,7 @@ const RecitationContainer = () => {
                         marginBottom: "10px",
                       }}
                     >
-                      Surah: {currentSurahData.current?.name}
+                      Surah: {currentSurahData?.name}
                     </Box>
                   )}
                   <Box>

@@ -15,9 +15,8 @@ export default function useSpeechRecognition({
   startTime,
   checkForMatches,
   adjustTtsSpeed,
-  matchesFound,
-  setInterruptFlag,
-  setMatchesFound,
+  matchesFoundRef,
+  interruptFlagRef,
   setTranslations,
   totalArabicWords,
   setTotalArabicWords,
@@ -64,7 +63,7 @@ export default function useSpeechRecognition({
         console.log("Silence detected => stopping recognition.");
         recognition.abort();
         isListeningRef.current = false;
-        setInterruptFlag(true);
+        interruptFlagRef.current = true;
       }, RECITATION_SILENCE_TIMEOUT);
 
       let interimTranscript = "";
@@ -75,7 +74,7 @@ export default function useSpeechRecognition({
       let finalNormalized = normalizeArabicText(interimTranscript.trim());
       accumulatedTranscriptRef.current = finalNormalized
 
-      if (matchesFound) {
+      if (matchesFoundRef.current) {
         setRecognizedText(interimTranscript.trim());
       }
 
