@@ -40,7 +40,7 @@ export default function useSpeechRecognition({
 
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
-    recognition.lang = language === "urdu" ? "ur-PK" : "ar-SA";
+    recognition.lang = "ar-SA";
     recognition.continuous = true;
     recognition.interimResults = true;
 
@@ -91,14 +91,14 @@ export default function useSpeechRecognition({
         const recognizedWordsCount = countArabicWords(finalNormalized);
         const currentTime = Date.now();
         const elapsedTimeMs = currentTime - startTime.current - totalPausedTime;
-        
+
         console.log("Time tracking:", {
           currentTime,
           startTime: startTime.current,
           totalPausedTime,
-          elapsedTimeMs
+          elapsedTimeMs,
         });
-        
+
         setTotalArabicWords(recognizedWordsCount);
         adjustTtsSpeed(recognizedWordsCount, elapsedTimeMs);
       } else {
@@ -134,10 +134,9 @@ export default function useSpeechRecognition({
 
     recognition.onend = () => {
       console.log("Speech recognition ended.");
-      setTimeout(()=>{
+      setTimeout(() => {
         recognition.start();
-      },300)
-      
+      }, 300);
     };
 
     return () => {

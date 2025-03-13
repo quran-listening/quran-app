@@ -21,10 +21,13 @@ import {
 
 // Data
 import quran_eng from "../data/quran_eng.json";
+import quran_urd from "../data/quran_urd.json";
 import {
   surahNameArray,
   dataForWholeQuranSearchAbleFormat,
 } from "../data/static";
+
+import { searchInWholeQuranUrdu } from "../data/searchInWholeQuranUrdu";
 
 import { normalizeArabicText } from "../utils/normalizeArabicText";
 import { calculateSimilarity } from "../utils/quranUtils";
@@ -38,7 +41,6 @@ export const RecitationProvider = ({ children }) => {
   // ------------------- Global States -------------------
   const [recognizedText, setRecognizedText] = useState("");
   const [translations, setTranslations] = useState([]);
-  const [language, setLanguage] = useState("english");
 
   // Surah detection
   const [fuse, setFuse] = useState(null);
@@ -77,6 +79,8 @@ export const RecitationProvider = ({ children }) => {
   const matchesFoundRef = useRef(true);
 
   const checkdCheckBoxRef = useRef(true);
+  const wholeQuranDataRef = useRef(dataForWholeQuranSearchAbleFormat);
+  const quranDataRef = useRef(quran_eng);
 
   // "Next verse" matching
   const [rollingWindow, setRollingWindow] = useState([]);
@@ -102,8 +106,7 @@ export const RecitationProvider = ({ children }) => {
   // Control flags
   const [flag, setFlag] = useState(false); // "live" mode UI
 
-  // Quran data
-  const [quranData] = useState(quran_eng);
+  const [language, setLanguage] = useState("english");
 
   let debounceTimeout;
 
@@ -132,6 +135,19 @@ export const RecitationProvider = ({ children }) => {
   useEffect(() => {
     checkdCheckBoxRef.current = checkdCheckBox;
   }, [checkdCheckBox]);
+
+  // Update Quran Json On Language Change
+  useEffect(() => {
+    if (language) {
+      if (language === "english") {
+        quranDataRef.current = quran_eng;
+        wholeQuranDataRef.current = dataForWholeQuranSearchAbleFormat;
+      } else if (language === "urdu") {
+        quranDataRef.current = quran_urd;
+        wholeQuranDataRef.current = searchInWholeQuranUrdu;
+      }
+    }
+  }, [language]);
   // --------------- 2) Adjust TTS Speed ---------------
   const adjustTtsSpeed = (wordsCount, elapsedTimeMs) => {
     if (!wordsCount || elapsedTimeMs <= 0) {
@@ -173,8 +189,8 @@ export const RecitationProvider = ({ children }) => {
   // --------------- 4) Wrappers for recitationHelpers ---------------
   const doSearchInWholeQuran = (transcript) => {
     searchInWholeQuran(transcript, {
-      quranData,
-      dataForWholeQuranSearchAbleFormat,
+      quranDataRef,
+      wholeQuranDataRef,
       surahFlag,
       setSurahName,
       surahId,
@@ -249,9 +265,9 @@ export const RecitationProvider = ({ children }) => {
     const currentTime = Date.now();
     const timeSinceLastTranscript = currentTime - lastTranscriptTimeRef.current;
 
-    if (timeSinceLastTranscript >= 9000) {
+    if (timeSinceLastTranscript >= 10000) {
       // 10 seconds
-      console.log("No transcript for 9 seconds, resetting...");
+      console.log("No transcript for 10 seconds, resetting...");
       resetter();
     } else {
       // Schedule next check
@@ -358,7 +374,7 @@ export const RecitationProvider = ({ children }) => {
             } else {
               AllahoHoAkbarFoundRef.current = false;
               bismillahFoundRef.current = false;
-              const surahDataItem = quranData[foundItem?.id - 1];
+              const surahDataItem = quranDataRef.current[foundItem?.id - 1];
               console.log("surahDataItem", surahDataItem);
               currentSurahData.current = surahDataItem;
 
