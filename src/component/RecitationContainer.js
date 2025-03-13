@@ -773,6 +773,21 @@ const RecitationContainer = () => {
                 this reference
               </a>
             </Box>  
+            <Box
+              sx={{ marginTop: "10px", textAlign: "center", fontSize: "14px" }}
+            >
+              <p style={{ color: "#fff", textAlign: "center", margin: "0" }}>
+                The Urdu version of the Quran Json is taken from{" "}
+              </p>
+              <a
+                href="https://cdn.jsdelivr.net/npm/quran-json@3.1.2/dist/quran_ur.json"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#fff" }}
+              >
+                this reference
+              </a>
+            </Box>  
           </Box>
         )}
       </Box>
