@@ -26,7 +26,6 @@ export function searchInWholeQuran(
     setPreviousAyaList,
   }
 ) {
-  console.log("wholeQuranDataRef>>>", wholeQuranDataRef?.current);
   const searchableVerses = normatlizedData(wholeQuranDataRef?.current);
   const fuse = new Fuse(searchableVerses, {
     keys: ["normalizedText"],
@@ -35,7 +34,6 @@ export function searchInWholeQuran(
   });
 
   const results = fuse?.search(transcript);
-  console.log("quranDataRef>>>", quranDataRef.current);
 
   if (results?.length > 0) {
     const bestMatch = results[0];
@@ -49,12 +47,10 @@ export function searchInWholeQuran(
     surahId.current = foundSurahId;
     setSurahName(foundSurahName);
     const surahDataItem = quranDataRef.current[foundSurahId - 1];
-    console.log("surahDataItem>>>", surahDataItem);
     currentSurahData.current = surahDataItem;
     currentVerseIndexRef = verseIndexFound;
 
     const newWindow = initRollingWindow(surahDataItem, verseIndexFound);
-    console.log("newWindow>>>", newWindow)
     rollingWindowRef.current = newWindow;
     // Set the matched verse text and translation
     const matchedVerse = surahDataItem?.verses[verseIndexFound];
@@ -265,7 +261,6 @@ export const processRecognition = (transcript, resetter, params) => {
     recognitionRef,
     lastAyahProcessedRef,
   } = params;
-  console.log("currentSurahData?.current>>>", currentSurahData?.current);
   if (!currentSurahData?.current?.verses) {
     console.log("No valid surah data available");
     return;
@@ -284,7 +279,6 @@ export const processRecognition = (transcript, resetter, params) => {
   const normalizedTranscript = normalizeArabicText(transcript);
   const fuseInstance = fuseInstanceFn(searchableVerses, 0.3);
   const results = findMultipleMatches(normalizedTranscript, fuseInstance);
-  console.log("results>>>", results);
 
   for (const el of results || []) {
     if (processedVersesRef.current?.has(el?.verseId)) {
