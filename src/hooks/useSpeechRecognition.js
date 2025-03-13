@@ -2,6 +2,7 @@
 import { useEffect, useRef } from "react";
 import { countArabicWords } from "../utils/quranUtils";
 import { normalizeArabicText } from "../utils/normalizeArabicText";
+import { removeNonArabicWords } from "../utils/recitationHelpers";
 
 export default function useSpeechRecognition({
   language,
@@ -57,7 +58,7 @@ export default function useSpeechRecognition({
       if (silenceTimerRef.current) {
         clearTimeout(silenceTimerRef.current);
       }
-      
+
       // Start new silence timer
       silenceTimerRef.current = setTimeout(() => {
         console.log("Silence detected => stopping recognition.");
@@ -70,12 +71,14 @@ export default function useSpeechRecognition({
       for (let i = event.resultIndex; i < event.results.length; i++) {
         interimTranscript += event.results[i][0].transcript + " ";
       }
-      
+
       let finalNormalized = normalizeArabicText(interimTranscript.trim());
-      accumulatedTranscriptRef.current = finalNormalized
+      accumulatedTranscriptRef.current = finalNormalized;
 
       if (matchesFoundRef.current) {
-        setRecognizedText(interimTranscript.trim());
+        // Clean the transcript to only include Arabic words
+        const cleanTranscript = removeNonArabicWords(interimTranscript.trim());
+        setRecognizedText(cleanTranscript);
       }
 
       // Count words
@@ -118,7 +121,10 @@ export default function useSpeechRecognition({
       console.error("Speech Recognition Error:", event.error);
       isListeningRef.current = false;
 
-      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      if (
+        event.error === "not-allowed" ||
+        event.error === "service-not-allowed"
+      ) {
         // user blocked permission, handle if needed
       } else {
         // attempt to restart
@@ -143,22 +149,23 @@ export default function useSpeechRecognition({
   }, [language]);
 
   function startRecognition() {
-    console.log("isListening",isListeningRef.current)
-    if(!recognitionRef.current) return;
-    
+    console.log("isListening", isListeningRef.current);
+    if (!recognitionRef.current) return;
+
     // Check if recognition is already in progress
     if (recognitionRef.current && isListeningRef.current) {
-      console.log("starting recognition")
+      console.log("starting recognition");
       try {
-          recognitionRef.current.start();
+        recognitionRef.current.start();
+        isListeningRef.current = true;
       } catch (err) {
-          console.error("Error starting recognition:", err);
+        console.error("Error starting recognition:", err);
       }
     }
   }
 
   function stopRecognition() {
-    console.log("stopping recognition called")
+    console.log("stopping recognition called");
     accumulatedTranscriptRef.current = "";
     window.speechSynthesis.cancel();
     recognitionRef.current.stop();

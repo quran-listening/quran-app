@@ -2,7 +2,7 @@ import stringSimilarity from "string-similarity";
 import { normalizeArabicText } from "./normalizeArabicText";
 
 /** Calculate similarity using string-similarity library */
-export function calculateSimilarity(str1, str2) {
+export const  calculateSimilarity = (str1, str2)=> {
     return stringSimilarity.compareTwoStrings(str1, str2);
   }
   

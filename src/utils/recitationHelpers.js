@@ -199,6 +199,8 @@ export function speakTranslation(text, { isMutedRef, ttsRate, language }) {
   const finalRate =
     typeof ttsRate === "object" && ttsRate.current ? ttsRate.current : ttsRate;
 
+  console.log("finalRate>>>", finalRate);
+
   utterance.rate = Number(finalRate);
   utterance.pitch = 1.0; // Normal pitch
 
@@ -207,7 +209,7 @@ export function speakTranslation(text, { isMutedRef, ttsRate, language }) {
   utterance.onstart = () => console.log("Started speaking");
   utterance.onend = () => {
     console.log("Finished speaking");
-  }
+  };
   utterance.onerror = (e) => console.error("Speech error:", e);
 
   synth.speak(utterance);
@@ -231,166 +233,170 @@ export const updateRollingWindow = (surahData, verseId) => {
     return remainingWindow;
   }
   const nextOne = surahData?.verses?.slice(verseId, verseId + 1);
+  console.log("surahData?.verses", nextOne);
   console.log("surahDataverses", nextOne, verseId);
 
   return nextOne;
 };
 
-export const processRecognition = (transcript, resetter, params) => {
-  const {
-    processedVersesRef,
-    translationsArray,
-    setTranslations,
-    emptyResultsCounter,
-    translationRecognizedTextRef,
-    rollingWindowRef,
-    lastAyahIdRef,
-    currentSurahData,
-    setPreviousAyaList,
-    isMutedRef,
-    ttsRate,
-    language,
-    previousAyaList,
-    recognitionRef,
-    lastAyahProcessedRef,
-  } = params;
+// export const processRecognition = (transcript, resetter, params) => {
+//   const {
+//     processedVersesRef,
+//     translationsArray,
+//     setTranslations,
+//     emptyResultsCounter,
+//     translationRecognizedTextRef,
+//     rollingWindowRef,
+//     lastAyahIdRef,
+//     currentSurahData,
+//     setPreviousAyaList,
+//     isMutedRef,
+//     ttsRate,
+//     language,
+//     previousAyaList,
+//     recognitionRef,
+//     lastAyahProcessedRef,
+//   } = params;
 
-  if (!currentSurahData?.current?.verses) {
-    console.log("No valid surah data available");
-    return;
-  }
+//   if (!currentSurahData?.current?.verses) {
+//     console.log("No valid surah data available");
+//     return;
+//   }
 
-  // Get current rolling window verses
-  const currentWindow = rollingWindowRef.current;
-  console.log("currentWindow", currentWindow);
-  // Prepare searchable format for current window only
+//   // Get current rolling window verses
+//   const currentWindow = rollingWindowRef.current;
+//   console.log("currentWindow", currentWindow);
+//   // Prepare searchable format for current window only
 
-  const searchableVerses = currentWindow?.map((verse) => ({
-    ...verse,
-    normalizedText: normalizeArabicText(verse.text),
-  }));
-  console.log("searchableVerses", searchableVerses);
-  const normalizedTranscript = normalizeArabicText(transcript);
-  const fuseInstance = fuseInstanceFn(searchableVerses, 0.3);
-  const results = findMultipleMatches(normalizedTranscript, fuseInstance);
-  console.log("emptyResultsCounter.current", emptyResultsCounter.current);
+//   const searchableVerses = currentWindow?.map((verse) => ({
+//     ...verse,
+//     normalizedText: normalizeArabicText(verse.text),
+//   }));
+//   console.log("searchableVerses", searchableVerses);
+//   const normalizedTranscript = normalizeArabicText(transcript);
+//   const fuseInstance = fuseInstanceFn(searchableVerses, 0.3);
+//   const results = findMultipleMatches(normalizedTranscript, fuseInstance);
+//   console.log("emptyResultsCounter.current", emptyResultsCounter.current);
 
 
-  for (const el of results || []) {
-    if (processedVersesRef.current?.has(el?.verseId)) {
-      continue;
-    }
+//   for (const el of results || []) {
+//     if (processedVersesRef.current?.has(el?.verseId)) {
+//       continue;
+//     }
 
-    // Update the processed verses set with the new verseId
-    processedVersesRef.current = new Set(processedVersesRef.current).add(
-      el?.verseId
-    );
+//     // Update the processed verses set with the new verseId
+//     processedVersesRef.current = new Set(processedVersesRef.current).add(
+//       el?.verseId
+//     );
 
-    if (!translationsArray?.current?.has(el?.translation)) {
-      translationRecognizedTextRef.current = normalizeArabicText(el?.text);
-      setTranslations([el?.translation]);
-      translationsArray.current?.add(el?.translation);
+//     if (!translationsArray?.current?.has(el?.translation)) {
+//       translationRecognizedTextRef.current = normalizeArabicText(el?.text);
+//       setTranslations([el?.translation]);
+//       translationsArray.current?.add(el?.translation);
 
-      // Check for repeated verses
-      const isRepeatedVerse =
-        previousAyaList.length > 0 &&
-        previousAyaList[previousAyaList.length - 1].verseId === el?.verseId &&
-        previousAyaList[previousAyaList.length - 1].surahId ===
-        currentSurahData?.current?.surahId;
+//       // Check for repeated verses
+//       const isRepeatedVerse =
+//         previousAyaList.length > 0 &&
+//         previousAyaList[previousAyaList.length - 1].verseId === el?.verseId &&
+//         previousAyaList[previousAyaList.length - 1].surahId ===
+//         currentSurahData?.current?.surahId;
 
-      // Only speak if it's not the last verse and not a repeated verse
-      if (
-        el?.verseId !== currentSurahData?.current?.verses?.length &&
-        !isRepeatedVerse
-      ) {
-        console.log("calling speak translation function");
-        speakTranslation(el?.translation, {
-          isMutedRef,
-          ttsRate: ttsRate.current,
-          language,
-        });
-      }
-      setPreviousAyaList((prev) => [
-        ...prev,
-        { ...el, surahId: currentSurahData?.current?.surahId },
-      ]);
-    }
+//       // Only speak if it's not the last verse and not a repeated verse
+//       if (
+//         el?.verseId !== currentSurahData?.current?.verses?.length &&
+//         !isRepeatedVerse
+//       ) {
+//         console.log("calling speak translation function");
+//         speakTranslation(el?.translation, {
+//           isMutedRef,
+//           ttsRate: ttsRate.current,
+//           language,
+//         });
+//       }
+//       setPreviousAyaList((prev) => [
+//         ...prev,
+//         { ...el, surahId: currentSurahData?.current?.surahId },
+//       ]);
+//     }
 
-    lastAyahIdRef.current = el?.verseId;
-    // Slide window forward after processing verse
-    rollingWindowRef.current = updateRollingWindow(
-      // currentWindow,
-      currentSurahData.current,
-      el?.verseId
-    );
+//     lastAyahIdRef.current = el?.verseId;
+//     // Slide window forward after processing verse
+//     rollingWindowRef.current = updateRollingWindow(
+//       // currentWindow,
+//       currentSurahData.current,
+//       el?.verseId
+//     );
 
-    // Early exit: break the loop if the last verse is reached
-    if (lastAyahIdRef.current === currentSurahData?.current?.verses?.length) {
-      lastAyahProcessedRef.current = true;
-      break;
-    }
-  }
+//     // Early exit: break the loop if the last verse is reached
+//     if (lastAyahIdRef.current === currentSurahData?.current?.verses?.length) {
+//       lastAyahProcessedRef.current = true;
+//       // setTimeout(() => {
+//       //   resetter();
+//       // }, 4000);
+//       break;
+//     }
+//   }
 
-  if (lastAyahProcessedRef.current) {
-    const synth = window.speechSynthesis;
-    const lastTranslation =
-      currentSurahData?.current?.verses[lastAyahIdRef.current - 1]?.translation;
-    if (synth && lastTranslation) {
-      const utterance = new SpeechSynthesisUtterance(lastTranslation);
-      utterance.lang = language === "english" ? "en-US" : "ar";
-      utterance.rate = ttsRate.current;
-      utterance.pitch = 1.0;
-      utterance.volume = isMutedRef.current ? 0 : 1;
-      utterance.onend = () => {
-        lastAyahProcessedRef.current = false;
-        resetter();
-      };
+//   if (lastAyahProcessedRef.current) {
+//     const synth = window.speechSynthesis;
+//     const lastTranslation =
+//       currentSurahData?.current?.verses[lastAyahIdRef.current - 1]?.translation;
+//     if (synth && lastTranslation) {
+//       const utterance = new SpeechSynthesisUtterance(lastTranslation);
+//       utterance.lang = language === "english" ? "en-US" : "ar";
+//       utterance.rate = ttsRate.current;
+//       utterance.pitch = 1.0;
+//       utterance.volume = isMutedRef.current ? 0 : 1;
+//       utterance.onend = () => {
+//         lastAyahProcessedRef.current = false;
+//         resetter();
+//       };
 
-      synth.speak(utterance);
+//       synth.speak(utterance);
 
-      recognitionRef.current.stop();
-      rollingWindowRef.current = [];
+//       recognitionRef.current.stop();
+//       rollingWindowRef.current = [];
 
-    } else {
-      recognitionRef.current.stop();
-      rollingWindowRef.current = [];
-      resetter();
-    }
-  }
-};
+//     } else {
+//       recognitionRef.current.stop();
+//       rollingWindowRef.current = [];
+//       resetter();
+//     }
+//   }
+// };
 
-export const findMultipleMatches = (transcript, fuseInstance) => {
-  const words = transcript.split(" ").filter((word) => word.trim() !== "");
-  const matches = [];
-  let i = 0;
-  while (i < words.length) {
-    let matchFound = false;
-    // Try to match from longest to shortest phrases starting at index i
-    for (let j = words.length; j > i; j--) {
-      const phrase = words.slice(i, j).join(" ");
-      const normalizedPhrase = normalizeArabicText(phrase);
-      const results = fuseInstance?.search(normalizedPhrase) || [];
-      // Check for a match with a low enough score (high confidence)
-      if (results?.length > 0 && results[0]?.score <= 0.3) {
-        const matchedVerse = results[0]?.item;
-        // Avoid duplicates by checking if the verse ID is already added
-        if (
-          !matches?.some((match) => match?.verseId === matchedVerse?.verseId)
-        ) {
-          matches.push(matchedVerse);
-        }
-        i = j; // Move past the matched words in the phrase
-        matchFound = true;
-        break;
-      }
-    }
-    if (!matchFound) {
-      // Move to the next word if no match found for this starting word
-      i += 1;
-    }
-  }
-  return matches;
-};
+// export const findMultipleMatches = (transcript, fuseInstance) => {
+//   const words = transcript.split(" ").filter((word) => word.trim() !== "");
+//   const matches = [];
+//   let i = 0;
+//   while (i < words.length) {
+//     let matchFound = false;
+//     // Try to match from longest to shortest phrases starting at index i
+//     for (let j = words.length; j > i; j--) {
+//       const phrase = words.slice(i, j).join(" ");
+//       const normalizedPhrase = normalizeArabicText(phrase);
+//       const results = fuseInstance?.search(normalizedPhrase) || [];
+//       // Check for a match with a low enough score (high confidence)
+//       if (results?.length > 0 && results[0]?.score <= 0.3) {
+//         const matchedVerse = results[0]?.item;
+//         // Avoid duplicates by checking if the verse ID is already added
+//         if (
+//           !matches?.some((match) => match?.verseId === matchedVerse?.verseId)
+//         ) {
+//           matches.push(matchedVerse);
+//         }
+//         i = j; // Move past the matched words in the phrase
+//         matchFound = true;
+//         break;
+//       }
+//     }
+//     if (!matchFound) {
+//       // Move to the next word if no match found for this starting word
+//       i += 1;
+//     }
+//   }
+//   return matches;
+// };
 
 // export const autoRecitation = (resetter, params) => {
 //   const {
@@ -636,3 +642,14 @@ export const findMultipleMatches = (transcript, fuseInstance) => {
 //   }
 // }
 
+export const removeNonArabicWords = (text) => {
+  // This regex matches Arabic characters, diacritics, and Arabic numerals
+  const arabicRegex =
+    /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0660-\u0669\u06F0-\u06F9\u064B-\u065F\u0670]+/g;
+
+  // Find all Arabic words
+  const arabicWords = text.match(arabicRegex);
+
+  // Return Arabic words joined by spaces, or empty string if no Arabic words found
+  return arabicWords ? arabicWords.join(" ") : "";
+};
