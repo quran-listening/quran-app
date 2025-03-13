@@ -723,6 +723,7 @@ const RecitationContainer = () => {
               }}
             >
               <Option value="english">English</Option>
+              <Option value="urdu">Urdu</Option>
             </Select>
 
             <Box
@@ -761,7 +762,7 @@ const RecitationContainer = () => {
               sx={{ marginTop: "10px", textAlign: "center", fontSize: "14px" }}
             >
               <p style={{ color: "#fff", textAlign: "center", margin: "0" }}>
-                The English version of the Quran Jason is taken from{" "}
+                The English version of the Quran Json is taken from{" "}
               </p>
               <a
                 href="https://cdn.jsdelivr.net/npm/quran-json@3.1.2/dist/quran_en.json"
@@ -771,7 +772,7 @@ const RecitationContainer = () => {
               >
                 this reference
               </a>
-            </Box>
+            </Box>  
           </Box>
         )}
       </Box>

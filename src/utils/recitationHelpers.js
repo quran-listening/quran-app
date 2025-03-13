@@ -13,8 +13,8 @@ import Fuse from "fuse.js";
 export function searchInWholeQuran(
   transcript,
   {
-    quranData,
-    dataForWholeQuranSearchAbleFormat,
+    quranDataRef,
+    wholeQuranDataRef,
     surahFlag,
     surahId,
     setSurahName,
@@ -26,7 +26,7 @@ export function searchInWholeQuran(
     setPreviousAyaList,
   }
 ) {
-  const searchableVerses = normatlizedData(dataForWholeQuranSearchAbleFormat);
+  const searchableVerses = normatlizedData(wholeQuranDataRef?.current);
   const fuse = new Fuse(searchableVerses, {
     keys: ["normalizedText"],
     threshold: 0.3,
@@ -46,7 +46,7 @@ export function searchInWholeQuran(
     surahFlag.current = true;
     surahId.current = foundSurahId;
     setSurahName(foundSurahName);
-    const surahDataItem = quranData[foundSurahId - 1];
+    const surahDataItem = quranDataRef.current[foundSurahId - 1];
     currentSurahData.current = surahDataItem;
     currentVerseIndexRef = verseIndexFound;
 
@@ -179,6 +179,11 @@ export const loadNextChunk = (
   }
 };
 
+const selectLanguage = {
+  english: "en-US", // English language code
+  urdu: "ur-PK", // Urdu language code
+};
+
 /**
  * Speak out text (translation) using browser's SpeechSynthesis
  *
@@ -195,11 +200,10 @@ export function speakTranslation(text, { isMutedRef, ttsRate, language }) {
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.volume = isMutedRef.current ? 0 : 1;
-  utterance.lang = "en-US"; // Set to English
+  utterance.lang = selectLanguage[language] || "en-US"; // Set to English if no language found
   const finalRate =
     typeof ttsRate === "object" && ttsRate.current ? ttsRate.current : ttsRate;
 
-  console.log("finalRate>>>", finalRate);
 
   utterance.rate = Number(finalRate);
   utterance.pitch = 1.0; // Normal pitch
@@ -228,10 +232,10 @@ export const updateRollingWindow = (surahData, verseId) => {
 
   // If we have 3 or fewer verses remaining, include all of them
   // This ensures we don't miss matches when nearing the end
-  if (remainingVerses <= 3) {
-    const remainingWindow = surahData?.verses?.slice(verseId);
-    return remainingWindow;
-  }
+  // if (remainingVerses <= 3) {
+  //   const remainingWindow = surahData?.verses?.slice(verseId);
+  //   return remainingWindow;
+  // }
   const nextOne = surahData?.verses?.slice(verseId, verseId + 1);
   console.log("surahData?.verses", nextOne);
   console.log("surahDataverses", nextOne, verseId);
@@ -257,7 +261,6 @@ export const processRecognition = (transcript, resetter, params) => {
     recognitionRef,
     lastAyahProcessedRef,
   } = params;
-
   if (!currentSurahData?.current?.verses) {
     console.log("No valid surah data available");
     return;
@@ -276,7 +279,6 @@ export const processRecognition = (transcript, resetter, params) => {
   const normalizedTranscript = normalizeArabicText(transcript);
   const fuseInstance = fuseInstanceFn(searchableVerses, 0.3);
   const results = findMultipleMatches(normalizedTranscript, fuseInstance);
-  console.log("emptyResultsCounter.current", emptyResultsCounter.current);
 
   for (const el of results || []) {
     if (processedVersesRef.current?.has(el?.verseId)) {
@@ -302,7 +304,7 @@ export const processRecognition = (transcript, resetter, params) => {
 
       // Only speak if it's not the last verse and not a repeated verse
       if (
-        el?.verseId !== currentSurahData?.current?.verses?.length &&
+        // el?.verseId !== currentSurahData?.current?.verses?.length &&
         !isRepeatedVerse
       ) {
         console.log("calling speak translation function");
@@ -329,38 +331,39 @@ export const processRecognition = (transcript, resetter, params) => {
     // Early exit: break the loop if the last verse is reached
     if (lastAyahIdRef.current === currentSurahData?.current?.verses?.length) {
       lastAyahProcessedRef.current = true;
-      // setTimeout(() => {
-      //   resetter();
-      // }, 4000);
+      setTimeout(() => {
+        console.log("resetter>>>");
+        resetter();
+      }, 4000);
       break;
     }
   }
 
-  if (lastAyahProcessedRef.current) {
-    const synth = window.speechSynthesis;
-    const lastTranslation =
-      currentSurahData?.current?.verses[lastAyahIdRef.current - 1]?.translation;
-    if (synth && lastTranslation) {
-      const utterance = new SpeechSynthesisUtterance(lastTranslation);
-      utterance.lang = language === "english" ? "en-US" : "ar";
-      utterance.rate = ttsRate.current;
-      utterance.pitch = 1.0;
-      utterance.volume = isMutedRef.current ? 0 : 1;
-      utterance.onend = () => {
-        lastAyahProcessedRef.current = false;
-        resetter();
-      };
+  // if (lastAyahProcessedRef.current) {
+  //   const synth = window.speechSynthesis;
+  //   const lastTranslation =
+  //     currentSurahData?.current?.verses[lastAyahIdRef.current - 1]?.translation;
+  //   if (synth && lastTranslation) {
+  //     const utterance = new SpeechSynthesisUtterance(lastTranslation);
+  //     utterance.lang = language === "english" ? "en-US" : "ar";
+  //     utterance.rate = ttsRate.current;
+  //     utterance.pitch = 1.0;
+  //     utterance.volume = isMutedRef.current ? 0 : 1;
+  //     utterance.onend = () => {
+  //       lastAyahProcessedRef.current = false;
+  //       resetter();
+  //     };
 
-      synth.speak(utterance);
+  //     synth.speak(utterance);
 
-      recognitionRef.current.stop();
-      rollingWindowRef.current = [];
-    } else {
-      recognitionRef.current.stop();
-      rollingWindowRef.current = [];
-      resetter();
-    }
-  }
+  //     recognitionRef.current.stop();
+  //     rollingWindowRef.current = [];
+  //   } else {
+  //     recognitionRef.current.stop();
+  //     rollingWindowRef.current = [];
+  //     resetter();
+  //   }
+  // }
 };
 
 export const findMultipleMatches = (transcript, fuseInstance) => {
