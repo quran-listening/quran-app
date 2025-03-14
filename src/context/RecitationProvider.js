@@ -418,7 +418,7 @@ export const RecitationProvider = ({ children }) => {
               // Restart silence timer
               silenceTimerRef.current = setTimeout(() => {
                 console.log(
-                  "⚠️ Silence detected for 3 seconds during recitation - stopping"
+                  "⚠️ Silence detected for 6.5 seconds during recitation - stopping"
                 );
                 if (recognitionRef.current) {
                   isListeningRef.current = false;
@@ -462,8 +462,6 @@ export const RecitationProvider = ({ children }) => {
               return true;
             };
 
-            
-
             // "Process" the verse
             translationRecognizedTextRef.current = verse.text;
             setTranslations([verse.translation]);
@@ -498,7 +496,6 @@ export const RecitationProvider = ({ children }) => {
 
           // Done reciting
           console.log("Done reciting Surah:", currentSurahData.current);
-          resetter();
         } catch (error) {
           console.error("Error in reciteEntireSurah:", error);
           resetter();
