@@ -12,7 +12,7 @@ function App() {
       <Routes>
         <Route path="/" element={<RecitationContainer />} />
         <Route path="/dev" element={<BecomeDev />} />
-        <Route path="/convert" element={<QuranSurahConverter />} />
+        {/* <Route path="/convert" element={<QuranSurahConverter />} /> */}
       </Routes>
       </BrowserRouter>
     </RecitationProvider>
