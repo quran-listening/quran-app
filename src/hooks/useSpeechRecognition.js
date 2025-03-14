@@ -28,7 +28,7 @@ export default function useSpeechRecognition({
   const accumulatedTranscriptRef = useRef(null);
 
   // How long to wait before stopping after silence
-  const RECITATION_SILENCE_TIMEOUT = 9000;
+  const RECITATION_SILENCE_TIMEOUT = 6500;
 
   useEffect(() => {
     const SpeechRecognition =
@@ -92,12 +92,6 @@ export default function useSpeechRecognition({
         const currentTime = Date.now();
         const elapsedTimeMs = currentTime - startTime.current - totalPausedTime;
 
-        console.log("Time tracking:", {
-          currentTime,
-          startTime: startTime.current,
-          totalPausedTime,
-          elapsedTimeMs,
-        });
 
         setTotalArabicWords(recognizedWordsCount);
         adjustTtsSpeed(recognizedWordsCount, elapsedTimeMs);
