@@ -53,7 +53,7 @@ const RecitationContainer = () => {
     ttsRate,
     isMutedRef,
     checkdCheckBox,
-    matchesFound,
+    matchesFoundRef,
     flag,
 
     // Setters
@@ -89,6 +89,8 @@ const RecitationContainer = () => {
   // Add timer state near other state declarations
   const [elapsedTime, setElapsedTime] = useState(0);
   const [timerInterval, setTimerInterval] = useState(null);
+  const [matchesFound, setMatchesFound] = useState(true);
+  const [surahData, setSurahData] = useState(currentSurahData);
 
   const navigate = useNavigate();
 
@@ -100,6 +102,14 @@ const RecitationContainer = () => {
       });
     }
   }, [previousAyaList]);
+
+  useEffect(() => {
+    setMatchesFound(matchesFoundRef.current);
+  }, [matchesFoundRef.current]);
+
+  useEffect(() => {
+    setSurahData(currentSurahData.current);
+  }, [currentSurahData.current]);
 
   // For date/time display
   const date = new Date();
@@ -386,12 +396,12 @@ const RecitationContainer = () => {
                         marginBottom: "10px",
                       }}
                     >
-                      Surah: {currentSurahData.current?.name}
+                      Surah: {surahData?.name}
                     </Box>
                   )}
                   <Box>
-                    {previousAyaList?.length === 0 &&
-                      currentSurahData?.name && (
+                    {/* {previousAyaList?.length === 0 &&
+                      surahData?.name && (
                         <Box
                           sx={{
                             display: "flex",
@@ -400,9 +410,9 @@ const RecitationContainer = () => {
                             marginBottom: "10px",
                           }}
                         >
-                          Surah: {currentSurahData?.name}
+                          Surah: {surahData?.name}
                         </Box>
-                      )}
+                      )} */}
 
                     {previousAyaList?.length > 0 ? (
                       previousAyaList?.map(
