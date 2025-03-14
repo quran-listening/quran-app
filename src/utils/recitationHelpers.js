@@ -26,6 +26,7 @@ export function searchInWholeQuran(
     autoReciteInProgressRef
   }
 ) {
+  console.log("insearchInWholeQuran" );
   if (autoReciteInProgressRef.current) return;
   const searchableVerses  = wholeQuranDataRef.current?.map((verse) => ({
     ...verse,
@@ -242,12 +243,6 @@ export const updateRollingWindow = (surahData, verseId) => {
   // Calculate remaining verses
   const remainingVerses = surahData?.verses?.length - verseId;
 
-  // If we have 3 or fewer verses remaining, include all of them
-  // This ensures we don't miss matches when nearing the end
-  // if (remainingVerses <= 3) {
-  //   const remainingWindow = surahData?.verses?.slice(verseId);
-  //   return remainingWindow;
-  // }
   const nextOne = surahData?.verses?.slice(verseId, verseId + 1);
   console.log("surahData?.verses", nextOne);
   console.log("surahDataverses", nextOne, verseId);

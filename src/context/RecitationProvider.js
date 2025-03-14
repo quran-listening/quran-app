@@ -235,9 +235,18 @@ export const RecitationProvider = ({ children }) => {
       1000
     );
 
+    const GairilMaghzobiTranscript = "غير المغضوب عليهم ولا الضالين";
+    if (
+      transcript?.includes(GairilMaghzobiTranscript)
+    ) {
+      resetter();
+      return;
+    }
+
     const AllahoakbarTranscript = "الله اكبر";
     const Allahoakbar = "اللّٰهُ أَكْبَرْ";
     const AllahoakbarTranslation = "Allah is the Greatest";
+    
     if (
       transcript?.includes(AllahoakbarTranscript) &&
       !AllahoHoAkbarFoundRef.current
@@ -267,7 +276,6 @@ export const RecitationProvider = ({ children }) => {
     if (autoReciteInProgressRef.current) {
       return;
     }
-
     // Split on any whitespace and remove empty entries
     const words = transcript.trim().split(/\s+/).filter(Boolean);
     if (words.length < 3) {
@@ -275,13 +283,14 @@ export const RecitationProvider = ({ children }) => {
     } else {
       adjustTtsSpeed();
     }
+    console.log("surahFlag.current", surahFlag.current,surahId.current);
     if (words.length < 3) {
       return;
     } else if (!surahFlag.current && surahId.current < 1) {
       // Initialize word queue for progressive matching
       let wordQueue = [];
       let matchFound = false;
-
+      console.log("checkForMatches123", surahFlag.current, surahId.current);
       // Try matching with increasing number of words
       for (let i = 0; i < words.length && !matchFound; i++) {
         wordQueue.push(words[i]);
@@ -289,14 +298,12 @@ export const RecitationProvider = ({ children }) => {
         const fuseInstance = fuseInstanceFn(versesList.current, 0.2);
         const normalizedPhrase = normalizeArabicText(searchPhrase);
         const fuseResults = fuseInstance?.search(normalizedPhrase);
-        console.log("fuseResults", fuseResults);
         if (fuseResults && fuseResults.length > 0) {
           if (fuseResults.length === 1) {
             // Unique match found
             matchFound = true;
 
             const foundItem = fuseResults[0].item;
-            console.log("foundItem", foundItem);
             if (foundItem?.id === 0) {
               // bismillahDetection detected
               if (!bismillahFoundRef.current) {
@@ -323,7 +330,6 @@ export const RecitationProvider = ({ children }) => {
               AllahoHoAkbarFoundRef.current = false;
               bismillahFoundRef.current = false;
               const surahDataItem = quranData[foundItem?.id - 1];
-              console.log("surahDataItem", surahDataItem);
               currentSurahData.current = surahDataItem;
 
               setSurahName(foundItem?.name);
@@ -331,7 +337,10 @@ export const RecitationProvider = ({ children }) => {
 
               autoReciteInProgressRef.current = true;
               lastAyahIdRef.current = surahDataItem?.verses?.[0]?.verseId;
+              currentVerseIndexRef.current = surahDataItem?.verses?.[0]?.verseId;
               surahFlag.current = true;
+              surahNameArrayFlag.current = true;
+              console.log("checkForMatches1234", surahFlag.current, surahId.current);
               break;
             }
             // Set states for the found surah
@@ -351,11 +360,11 @@ export const RecitationProvider = ({ children }) => {
 
   // ---- The effect in the old style ----
   useEffect(() => {
+    console.log("autoReciteInProgressRef");
     // Check your refs instead of props/state
     if (autoReciteInProgressRef.current && currentSurahData.current) {
       // We define the async function inside the effect
       const reciteEntireSurah = async () => {
-        console.log("Auto reciting Surah:", currentSurahData.current);
 
         // If you used surahNameArrayFlagRef/currentVerseIdRef:
         lastAyahIdRef.current = surahNameArrayFlag.current
@@ -376,7 +385,6 @@ export const RecitationProvider = ({ children }) => {
             }
 
             const verse = currentSurahData.current?.verses[i];
-            console.log("verse1", verse);
             if (!verse) continue;
 
             // Create rolling window of next 3 verses
@@ -388,7 +396,6 @@ export const RecitationProvider = ({ children }) => {
                 surahId: currentSurahData.current.surahId,
                 index: index // Position in rolling window
               }));
-            console.log("rollingVerses", rollingVerses);
             rollingWindowRef.current = rollingVerses;
 
             console.log("\n--- Rolling Window Debug ---");
@@ -402,7 +409,7 @@ export const RecitationProvider = ({ children }) => {
             console.log("------------------------\n");
 
             // The inline function to check transcripts
-            const checkTranscriptMatch = (transcript) => {
+            const checkTranscriptMatch = (accumulatedTranscript) => {
               // Clear existing silence timer
               if (silenceTimerRef.current) {
                 clearTimeout(silenceTimerRef.current);
@@ -421,41 +428,30 @@ export const RecitationProvider = ({ children }) => {
                 }
               }, RECITATION_SILENCE_TIMEOUT);
 
-              // const normalizedTranscript = normalizeArabicText(transcript);
-
               // Get current rolling window verses
               const currentWindow = rollingWindowRef.current;
-              console.log("currentWindow", currentWindow);
-              
-             
-              
-              // Prepare searchable format for current window only
 
+              // Prepare searchable format for current window only
               const searchableVerses = currentWindow?.map((verse) => ({
                 ...verse,
                 normalizedText: normalizeArabicText(verse?.text),
               }));
-              console.log("searchableVerses", searchableVerses);
-              const normalizedTranscript = normalizeArabicText(transcript);
+              const normalizedTranscript = normalizeArabicText(accumulatedTranscript);
               const fuseInstance = fuseInstanceFn(searchableVerses, 0.4);
               const results = findMultipleMatches(normalizedTranscript, fuseInstance);
-              console.log("autorecitation results", results);
+              console.log("autorecitation results", accumulatedTranscript);
 
-
-               // Check if window is empty
-               if (!results || results.length === 0) {
+              // Check if window is empty
+              if (!results || results.length === 0) {
                 emptyResultsCounter.current++;
-                console.log("Empty window detected. Counter:", emptyResultsCounter.current);
-                
+
                 if (emptyResultsCounter.current >= 4) {
-                  console.log("Empty window detected 4 times - interrupting recitation");
+                  recognitionRef.current.stop();
                   interruptFlagRef.current = true;
                   emptyResultsCounter.current = 0; // Reset counter
                   autoReciteInProgressRef.current = false;
                   currentSurahData.current = null;
-                  if (transcript?.length > 10) {
-                    doSearchInWholeQuran(transcript);
-                  }
+
                   return false;
                 }
               } else {
@@ -466,27 +462,7 @@ export const RecitationProvider = ({ children }) => {
               return true;
             };
 
-            // Overwrite onresult with our matching logic
-            if (recognitionRef.current) {
-              const originalOnResult = recognitionRef.current.onresult;
-              recognitionRef.current.onresult = (event) => {
-                let transcript = "";
-                for (
-                  let j = event.resultIndex;
-                  j < event.results.length;
-                  j++
-                ) {
-                  transcript += event.results[j][0].transcript + " ";
-                }
-
-                checkTranscriptMatch(transcript);
-                
-                // Otherwise, call the original handler
-                if (originalOnResult) {
-                  originalOnResult(event);
-                }
-              };
-            }
+            
 
             // "Process" the verse
             translationRecognizedTextRef.current = verse.text;
@@ -518,22 +494,10 @@ export const RecitationProvider = ({ children }) => {
               }, 100);
             });
             
-            // If this was your last verse...
-            if (i === currentSurahData.current?.verses?.length - 1) {
-              console.log("last verse")
-              interruptFlagRef.current = true;
-              // Tidy up TTS speed, etc.
-              ttsRate.current = 1;
-              // e.g. setTtsRate(1);
-            }
           }
 
           // Done reciting
-          console.log("Done reciting Surah:", currentSurahData.current?.name);
-          // setTranslationRecognizedText("");
-          setTranslations([]);
-          autoReciteInProgressRef.current = false;
-          currentSurahData.current = null;
+          console.log("Done reciting Surah:", currentSurahData.current);
           resetter();
         } catch (error) {
           console.error("Error in reciteEntireSurah:", error);
@@ -546,180 +510,6 @@ export const RecitationProvider = ({ children }) => {
     }
     // Because these are refs, changes in `.current` won't re-run effect:
   }, [autoReciteInProgressRef.current, currentSurahData.current]);
-
-  // useEffect(() => {
-  //   if (autoReciteInProgressRef.current && currentSurahData.current) {
-  //     const reciteEntireSurah = async () => {
-  //       console.log("Auto reciting Surah:", currentSurahData.current?.name);
-  //       const startingVerseIndex = surahNameArrayFlag.current ? 
-  //         currentVerseIndexRef.current - 1 : 
-  //         currentVerseIndexRef.current;
-
-  //       try {
-  //         for (let i = startingVerseIndex; i < currentSurahData.current?.verses?.length; i++) {
-  //           if (interruptFlagRef.current) {
-  //             console.log("Interrupt detected. Stopping Surah recitation.");
-  //             resetter();
-  //             break;
-  //           }
-
-  //           const verse = currentSurahData.current?.verses[i];
-  //           if (!verse) continue;
-
-  //           // Create rolling window
-  //           const rollingVerses = currentSurahData.current?.verses
-  //             .slice(i, i + ROLLING_WINDOW_SIZE)
-  //             .map((v) => normalizeArabicText(v.text));
-  //           rollingWindowRef.current = rollingVerses;
-
-  //           // Add these console logs
-  //           console.log("\n--- Rolling Window Debug ---");
-  //           console.log("Current verse index:", i);
-  //           console.log("Rolling window verses:");
-  //           rollingVerses.forEach((verse, index) => {
-  //             console.log(
-  //               `Window position ${index + 1}:`,
-  //               verse.substring(0, 50) + "..."
-  //             );
-  //           });
-  //           console.log("------------------------\n");
-
-
-  //           const checkTranscriptMatch = (transcript) => {
-  //             console.log("Checking transcript match for:", transcript);
-  //             // Clear existing silence timer
-  //             if (silenceTimerRef.current) {
-  //               clearTimeout(silenceTimerRef.current);
-  //             }
-
-  //             // Start new silence timer specific for recitation
-  //             silenceTimerRef.current = setTimeout(() => {
-  //               console.log(
-  //                 "⚠️ Silence detected for 9 seconds during recitation - stopping"
-  //               );
-  //               if (recognitionRef.current) {
-  //                 // recognitionRef.current.abort();
-  //                 interruptFlagRef.current = true;
-  //                 autoReciteInProgressRef.current = false;
-  //                 currentSurahData.current = null;
-  //               }
-  //             }, RECITATION_SILENCE_TIMEOUT);
-
-  //             const normalizedTranscript = normalizeArabicText(transcript);
-
-  //             // Check similarity with each verse in rolling window
-  //             const similarities = rollingVerses.map((verse) =>
-  //               calculateSimilarity(normalizedTranscript, verse)
-  //             );
-
-  //             console.log("\n--- Transcript Match Debug ---");
-  //             console.log(
-  //               "Received transcript:",
-  //               normalizedTranscript.substring(0, 50) + "..."
-  //             );
-  //             console.log("Similarity scores:");
-  //             rollingVerses.forEach((verse, index) => {
-  //               console.log(
-  //                 `Verse ${index + 1} similarity:`,
-  //                 similarities[index].toFixed(3)
-  //               );
-  //             });
-
-  //             // Get best match
-  //             const bestMatch = Math.max(...similarities);
-  //             console.log("Best match score:", bestMatch.toFixed(3));
-  //             console.log("------------------------\n");
-
-  //             const SIMILARITY_THRESHOLD = 0.6;
-
-  //             if (bestMatch < SIMILARITY_THRESHOLD) {
-  //               console.warn("❌ No matching verse found in rolling window!");
-  //               console.warn("Threshold:", SIMILARITY_THRESHOLD);
-
-  //               // Stop recognition
-  //               if (recognitionRef.current) {
-  //                 recognitionRef.current.abort();
-  //               }
-  //               interruptFlagRef.current = true;
-  //               return false;
-  //             }
-  //             console.log("✅ Match found! Continuing...");
-  //             return true;
-  //           };
-
-  //           if (recognitionRef.current) {
-  //             const originalOnResult = recognitionRef.current.onresult;
-  //             recognitionRef.current.onresult = (event) => {
-  //               let transcript = "";
-  //               for (let i = event.resultIndex; i < event.results.length; i++) {
-  //                 transcript += event.results[i][0].transcript + " ";
-  //               }
-
-  //               // Check if transcript matches any verse in rolling window
-  //               if (!checkTranscriptMatch(transcript)) {
-  //                 return;
-  //               }
-
-  //               // Call original onresult handler if match found
-  //               if (originalOnResult) {
-  //                 originalOnResult(event);
-  //               }
-  //             };
-  //           }
-
-  //           // Process verse - Show current verse only
-  //           matchesFoundRef.current = false;
-  //           surahEndFlagRef.current = true;
-  //           translationRecognizedTextRef.current = verse?.text;
-  //           setTranslations([verse?.translation]); // Show only current verse translation
-  //           lastAyahIdRef.current = i;
-
-  //           // Update previous ayah list with only the current verse
-  //           setPreviousAyaList((prev) => {
-  //             const newVerse = {
-  //               ...verse,
-  //               surahId: currentSurahData.current?.surahId,
-  //               verseId: verse?.verseId
-  //             };
-
-  //             // Keep only verses up to the current one
-  //             const filteredPrev = prev.filter(v => 
-  //               v.surahId !== currentSurahData.current?.surahId || 
-  //               v.verseId < verse?.verseId
-  //             );
-
-  //             return [...filteredPrev, newVerse];
-  //           });
-
-  //           // Speak the translation
-  //           speakTranslation(verse?.translation, { isMutedRef, ttsRate, language });
-
-  //           // Wait for speech to complete before moving to next verse
-  //           await new Promise(resolve => {
-  //             const checkSpeaking = setInterval(() => {
-  //               if (!window.speechSynthesis.speaking) {
-  //                 clearInterval(checkSpeaking);
-  //                 resolve();
-  //               }
-  //             }, 100);
-  //           });
-
-  //           if (i === currentSurahData.current.verses.length - 1) {
-  //             surahEndFlagRef.current = true;
-  //             ttsRate.current = 1;
-  //           }
-  //         }
-  //         resetter();
-  //       } catch (error) {
-  //         console.error("Error in reciteEntireSurah:", error);
-  //         resetter();
-  //       }
-  //     };
-
-  //     reciteEntireSurah();
-  //   }
-  // }, [autoReciteInProgressRef.current, currentSurahData.current]);
-
 
 
   const stopRecognitionAndReset = () => {
