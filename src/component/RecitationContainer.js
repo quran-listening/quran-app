@@ -41,6 +41,7 @@ import {
 import useMicrophone from "../hooks/useMicrophones";
 import LiveMicVisualizer from "./LiveMicVisualizer";
 import FeedbackForm from "./FeedbackForm";
+import { ClickAwayListener, Tooltip } from "@mui/material";
 
 const RecitationContainer = () => {
   const {
@@ -119,8 +120,11 @@ const RecitationContainer = () => {
   const year = date.toLocaleDateString("en-US", { year: "numeric" });
   const formattedDate = `${weekday}, ${day} ${month} ${year}`;
 
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+
   const handleLanguageChange = (event, value) => {
     setLanguage(value);
+    localStorage.setItem('language', value);
   };
 
   const handleCheckBoxChange = () => {
@@ -129,7 +133,15 @@ const RecitationContainer = () => {
     setCheckdCheckBox((prev) => !prev);
   };
 
+  const handleTooltipClose = () => {
+    setTooltipOpen(false);
+  };
+
   const handleMuteChange = () => {
+    if (language === "urdu") {
+      setTooltipOpen(true);
+      return;
+    }
     handleMute();
     setIsMuted((prev) => !prev);
   };
@@ -327,23 +339,42 @@ const RecitationContainer = () => {
                       <LiveMicVisualizer />
                     </Box>
                   </Box>
-                  <Box
-                    onClick={handleMuteChange}
-                    style={{
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      alignItems: "flex-end",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <img
-                      id="muteIcon"
-                      src={isMuted ? muteIcon : unmuteIcon}
-                      alt={isMuted ? "Unmute" : "Mute"}
-                      width={25}
-                      height={25}
-                    />
-                  </Box>
+
+                  <ClickAwayListener onClickAway={handleTooltipClose}>
+                    <div>
+                      <Tooltip
+                        PopperProps={{
+                          disablePortal: true,
+                        }}
+                        onClose={handleTooltipClose}
+                        open={tooltipOpen && language === "urdu"}
+                        disableFocusListener
+                        disableHoverListener
+                        disableTouchListener
+                        title="Coming Soon"
+                        placement="top" // Add this line to show tooltip on top
+                        arrow // Add this to show an arrow pointing to the element
+                      >
+                        <Box
+                          onClick={handleMuteChange}
+                          style={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            alignItems: "flex-end",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <img
+                            id="muteIcon"
+                            src={isMuted ? muteIcon : unmuteIcon}
+                            alt={isMuted ? "Unmute" : "Mute"}
+                            width={25}
+                            height={25}
+                          />
+                        </Box>
+                      </Tooltip>
+                    </div>
+                  </ClickAwayListener>
                 </Box>
 
                 <Box
@@ -595,8 +626,7 @@ const RecitationContainer = () => {
                     color: "#fff",
                   }}
                 >
-                  <Box mr={1} sx={{ color: "#fff", display: "flex" }}>
-                    Time: {formatTime(elapsedTime)} | Translation Speed ={" "}
+                  <Box mr={1} sx={{ color: "#fff", display: "flex" }}>                    Translation Speed ={" "}
                     {!checkdCheckBox && (
                       <Box
                         sx={{
@@ -648,6 +678,19 @@ const RecitationContainer = () => {
                   />
                   <Typography sx={{ color: "#fff", marginLeft: "5px" }}>
                     Auto
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    alignItems: "center",
+                    color: "#fff",
+                    mt: 1,
+                  }}
+                >
+                  <Typography sx={{ color: "#fff" }}>
+                    Time: {formatTime(elapsedTime)}
                   </Typography>
                 </Box>
               </Grid>
@@ -782,7 +825,7 @@ const RecitationContainer = () => {
               >
                 this reference
               </a>
-            </Box>  
+            </Box>
             <Box
               sx={{ marginTop: "10px", textAlign: "center", fontSize: "14px" }}
             >
@@ -797,7 +840,7 @@ const RecitationContainer = () => {
               >
                 this reference
               </a>
-            </Box>  
+            </Box>
           </Box>
         )}
       </Box>
