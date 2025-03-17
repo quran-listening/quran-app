@@ -77,7 +77,7 @@ export const RecitationProvider = ({ children }) => {
   const interruptFlagRef = useRef(false);
   const matchesFoundRef = useRef(true);
   const wholeQuranDataRef = useRef(dataForWholeQuranSearchAbleFormat);
-
+  const transcriptRef = useRef("");
   const checkdCheckBoxRef = useRef(true);
 
   // "Next verse" matching
@@ -221,7 +221,8 @@ export const RecitationProvider = ({ children }) => {
   };
 
   const checkForMatches = (main_transcript) => {
-    console.log("checkForMatches", main_transcript);
+    transcriptRef.current = main_transcript;
+    console.log("checkForMatches", transcriptRef.current);
     // Clean the transcript to only include Arabic words
     const transcript = removeNonArabicWords(main_transcript);
     // Update last transcript time
@@ -409,7 +410,7 @@ export const RecitationProvider = ({ children }) => {
             console.log("------------------------\n");
 
             // The inline function to check transcripts
-            const checkTranscriptMatch = (accumulatedTranscript) => {
+            const checkTranscriptMatch = () => {
               // Clear existing silence timer
               if (silenceTimerRef.current) {
                 clearTimeout(silenceTimerRef.current);
@@ -436,10 +437,10 @@ export const RecitationProvider = ({ children }) => {
                 ...verse,
                 normalizedText: normalizeArabicText(verse?.text),
               }));
-              const normalizedTranscript = normalizeArabicText(accumulatedTranscript);
+              const normalizedTranscript = normalizeArabicText(transcriptRef.current);
               const fuseInstance = fuseInstanceFn(searchableVerses, 0.4);
               const results = findMultipleMatches(normalizedTranscript, fuseInstance);
-              console.log("autorecitation results", accumulatedTranscript);
+              console.log("autorecitation results", transcriptRef.current);
 
               // Check if window is empty
               if (!results || results.length === 0) {
@@ -462,11 +463,15 @@ export const RecitationProvider = ({ children }) => {
               return true;
             };
 
-            // "Process" the verse
-            translationRecognizedTextRef.current = verse.text;
-            setTranslations([verse.translation]);
-            lastAyahIdRef.current++;
-            console.log("lastAyahIdRef", lastAyahIdRef.current);
+            if (true) {
+              checkTranscriptMatch();
+            }
+
+              // "Process" the verse
+              translationRecognizedTextRef.current = verse.text;
+              setTranslations([verse.translation]);
+              lastAyahIdRef.current++;
+              console.log("lastAyahIdRef", lastAyahIdRef.current);
             // Speak translation (example TTS helper)
             await speakTranslation(verse.translation, {
               isMutedRef,

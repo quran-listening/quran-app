@@ -26,7 +26,7 @@ export function searchInWholeQuran(
     autoReciteInProgressRef
   }
 ) {
-  console.log("insearchInWholeQuran" );
+  
   if (autoReciteInProgressRef.current) return;
   const searchableVerses  = wholeQuranDataRef.current?.map((verse) => ({
     ...verse,
