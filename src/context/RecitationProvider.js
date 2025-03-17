@@ -22,10 +22,13 @@ import {
 
 // Data
 import quran_eng from "../data/quran_eng.json";
+import quran_urd from "../data/quran_urd.json";
 import {
   surahNameArray,
   dataForWholeQuranSearchAbleFormat,
 } from "../data/static";
+
+import { searchInWholeQuranUrdu } from "../data/searchInWholeQuranUrdu";
 
 import { normalizeArabicText } from "../utils/normalizeArabicText";
 import { calculateSimilarity } from "../utils/quranUtils";
@@ -39,7 +42,11 @@ export const RecitationProvider = ({ children }) => {
   // ------------------- Global States -------------------
   const [recognizedText, setRecognizedText] = useState("");
   const [translations, setTranslations] = useState([]);
-  const [language, setLanguage] = useState("english");
+
+  const [language, setLanguage] = useState(() => {
+    const savedLanguage = localStorage.getItem("language");
+    return savedLanguage || "english"; // fallback to "english" if no saved preference
+  });
 
   // Surah detection
   const [fuse, setFuse] = useState(null);
@@ -77,6 +84,7 @@ export const RecitationProvider = ({ children }) => {
   const interruptFlagRef = useRef(false);
   const matchesFoundRef = useRef(true);
   const wholeQuranDataRef = useRef(dataForWholeQuranSearchAbleFormat);
+  const quranDataRef = useRef(quran_eng);
 
   const checkdCheckBoxRef = useRef(true);
 
@@ -103,9 +111,6 @@ export const RecitationProvider = ({ children }) => {
 
   // Control flags
   const [flag, setFlag] = useState(false); // "live" mode UI
-
-  // Quran data
-  const [quranData] = useState(quran_eng);
 
   let debounceTimeout;
 
@@ -134,6 +139,20 @@ export const RecitationProvider = ({ children }) => {
   useEffect(() => {
     checkdCheckBoxRef.current = checkdCheckBox;
   }, [checkdCheckBox]);
+
+  // Update Quran Json On Language Change
+  useEffect(() => {
+    if (language) {
+      if (language === "english") {
+        quranDataRef.current = quran_eng;
+        wholeQuranDataRef.current = dataForWholeQuranSearchAbleFormat;
+      } else if (language === "urdu") {
+        quranDataRef.current = quran_urd;
+        wholeQuranDataRef.current = searchInWholeQuranUrdu;
+      }
+    }
+  }, [language]);
+
   // --------------- 2) Adjust TTS Speed ---------------
   const adjustTtsSpeed = (wordsCount, elapsedTimeMs) => {
     if (!wordsCount || elapsedTimeMs <= 0) {
@@ -175,7 +194,7 @@ export const RecitationProvider = ({ children }) => {
   // --------------- 4) Wrappers for recitationHelpers ---------------
   const doSearchInWholeQuran = (transcript) => {
     searchInWholeQuran(transcript, {
-      quranData,
+      quranDataRef,
       wholeQuranDataRef,
       surahFlag,
       setSurahName,
@@ -192,8 +211,6 @@ export const RecitationProvider = ({ children }) => {
     });
   };
 
-  
-
   const doSpeakTranslation = (textToSpeak) => {
     speakTranslation(textToSpeak, {
       isMutedRef,
@@ -201,7 +218,6 @@ export const RecitationProvider = ({ children }) => {
       language,
     });
   };
-  
 
   const handleNoTranscriptTimeout = () => {
     const currentTime = Date.now();
@@ -236,9 +252,7 @@ export const RecitationProvider = ({ children }) => {
     );
 
     const GairilMaghzobiTranscript = "غير المغضوب عليهم ولا الضالين";
-    if (
-      transcript?.includes(GairilMaghzobiTranscript)
-    ) {
+    if (transcript?.includes(GairilMaghzobiTranscript)) {
       resetter();
       return;
     }
@@ -246,7 +260,7 @@ export const RecitationProvider = ({ children }) => {
     const AllahoakbarTranscript = "الله اكبر";
     const Allahoakbar = "اللّٰهُ أَكْبَرْ";
     const AllahoakbarTranslation = "Allah is the Greatest";
-    
+
     if (
       transcript?.includes(AllahoakbarTranscript) &&
       !AllahoHoAkbarFoundRef.current
@@ -283,7 +297,6 @@ export const RecitationProvider = ({ children }) => {
     } else {
       adjustTtsSpeed();
     }
-    console.log("surahFlag.current", surahFlag.current,surahId.current);
     if (words.length < 3) {
       return;
     } else if (!surahFlag.current && surahId.current < 1) {
@@ -329,7 +342,7 @@ export const RecitationProvider = ({ children }) => {
             } else {
               AllahoHoAkbarFoundRef.current = false;
               bismillahFoundRef.current = false;
-              const surahDataItem = quranData[foundItem?.id - 1];
+              const surahDataItem = quranDataRef.current[foundItem?.id - 1];
               currentSurahData.current = surahDataItem;
 
               setSurahName(foundItem?.name);
@@ -337,10 +350,15 @@ export const RecitationProvider = ({ children }) => {
 
               autoReciteInProgressRef.current = true;
               lastAyahIdRef.current = surahDataItem?.verses?.[0]?.verseId;
-              currentVerseIndexRef.current = surahDataItem?.verses?.[0]?.verseId;
+              currentVerseIndexRef.current =
+                surahDataItem?.verses?.[0]?.verseId;
               surahFlag.current = true;
               surahNameArrayFlag.current = true;
-              console.log("checkForMatches1234", surahFlag.current, surahId.current);
+              console.log(
+                "checkForMatches1234",
+                surahFlag.current,
+                surahId.current
+              );
               break;
             }
             // Set states for the found surah
@@ -354,9 +372,7 @@ export const RecitationProvider = ({ children }) => {
         }
       }
     }
-    
   };
-
 
   // ---- The effect in the old style ----
   useEffect(() => {
@@ -365,7 +381,6 @@ export const RecitationProvider = ({ children }) => {
     if (autoReciteInProgressRef.current && currentSurahData.current) {
       // We define the async function inside the effect
       const reciteEntireSurah = async () => {
-
         // If you used surahNameArrayFlagRef/currentVerseIdRef:
         lastAyahIdRef.current = surahNameArrayFlag.current
           ? currentVerseIndexRef.current - 1
@@ -394,7 +409,7 @@ export const RecitationProvider = ({ children }) => {
                 text: normalizeArabicText(v.text),
                 verseId: v.verseId,
                 surahId: currentSurahData.current.surahId,
-                index: index // Position in rolling window
+                index: index, // Position in rolling window
               }));
             rollingWindowRef.current = rollingVerses;
 
@@ -436,9 +451,14 @@ export const RecitationProvider = ({ children }) => {
                 ...verse,
                 normalizedText: normalizeArabicText(verse?.text),
               }));
-              const normalizedTranscript = normalizeArabicText(accumulatedTranscript);
+              const normalizedTranscript = normalizeArabicText(
+                accumulatedTranscript
+              );
               const fuseInstance = fuseInstanceFn(searchableVerses, 0.4);
-              const results = findMultipleMatches(normalizedTranscript, fuseInstance);
+              const results = findMultipleMatches(
+                normalizedTranscript,
+                fuseInstance
+              );
               console.log("autorecitation results", accumulatedTranscript);
 
               // Check if window is empty
@@ -462,8 +482,6 @@ export const RecitationProvider = ({ children }) => {
               return true;
             };
 
-            
-
             // "Process" the verse
             translationRecognizedTextRef.current = verse.text;
             setTranslations([verse.translation]);
@@ -485,7 +503,7 @@ export const RecitationProvider = ({ children }) => {
               },
             ]);
             // Wait for speech to complete before moving to next verse
-            await new Promise(resolve => {
+            await new Promise((resolve) => {
               const checkSpeaking = setInterval(() => {
                 if (!window.speechSynthesis.speaking) {
                   clearInterval(checkSpeaking);
@@ -493,7 +511,6 @@ export const RecitationProvider = ({ children }) => {
                 }
               }, 100);
             });
-            
           }
 
           // Done reciting
@@ -510,7 +527,6 @@ export const RecitationProvider = ({ children }) => {
     }
     // Because these are refs, changes in `.current` won't re-run effect:
   }, [autoReciteInProgressRef.current, currentSurahData.current]);
-
 
   const stopRecognitionAndReset = () => {
     stopListening();
@@ -574,10 +590,6 @@ export const RecitationProvider = ({ children }) => {
       startRecognition(); // from our custom hook
     }
   };
-
-
-
-
 
   const stopListening = () => {
     // Clear the timeout

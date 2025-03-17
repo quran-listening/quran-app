@@ -13,7 +13,7 @@ import Fuse from "fuse.js";
 export function searchInWholeQuran(
   transcript,
   {
-    quranData,
+    quranDataRef,
     wholeQuranDataRef,
     surahFlag,
     surahId,
@@ -23,17 +23,13 @@ export function searchInWholeQuran(
     rollingWindowRef,
     translationRecognizedTextRef,
     setTranslations,
-    autoReciteInProgressRef
+    autoReciteInProgressRef,
   }
 ) {
-  console.log("insearchInWholeQuran" );
   if (autoReciteInProgressRef.current) return;
-  const searchableVerses  = wholeQuranDataRef.current?.map((verse) => ({
-    ...verse,
-    normalizedText: normalizeArabicText(verse?.text),
-  }));
+
+  const searchableVerses = normatlizedData(wholeQuranDataRef.current);
   console.log("searchableVerses", searchableVerses);
-  // const searchableVerses = normatlizedData(wholeQuranDataRef.current);
   const fuse = new Fuse(searchableVerses, {
     keys: ["normalizedText"],
     threshold: 0.3,
@@ -55,8 +51,8 @@ export function searchInWholeQuran(
     surahFlag.current = true;
     surahId.current = foundSurahId;
     setSurahName(foundSurahName);
-    console.log("quranDataRef", quranData);
-    const surahDataItem = quranData[foundSurahId - 1];
+    const surahDataItem = quranDataRef.current[foundSurahId - 1];
+
     currentSurahData.current = surahDataItem;
     console.log("verseIndexFound", verseIndexFound);
     currentVerseIndexRef.current = verseIndexFound;
@@ -65,7 +61,7 @@ export function searchInWholeQuran(
     // const newWindow = initRollingWindow(surahDataItem, verseIndexFound);
     // rollingWindowRef.current = newWindow;
     // Set the matched verse text and translation
-    
+
     // const matchedVerse = surahDataItem?.verses[verseIndexFound];
     // translationRecognizedTextRef.current = matchedVerse?.text;
     // setTranslations([matchedVerse?.translation]);
@@ -217,7 +213,6 @@ export function speakTranslation(text, { isMutedRef, ttsRate, language }) {
   const finalRate =
     typeof ttsRate === "object" && ttsRate.current ? ttsRate.current : ttsRate;
 
-
   utterance.rate = Number(finalRate);
   utterance.pitch = 1.0; // Normal pitch
 
@@ -288,7 +283,6 @@ export const updateRollingWindow = (surahData, verseId) => {
 //   const fuseInstance = fuseInstanceFn(searchableVerses, 0.3);
 //   const results = findMultipleMatches(normalizedTranscript, fuseInstance);
 //   console.log("emptyResultsCounter.current", emptyResultsCounter.current);
-
 
 //   for (const el of results || []) {
 //     if (processedVersesRef.current?.has(el?.verseId)) {
@@ -408,7 +402,6 @@ export const findMultipleMatches = (transcript, fuseInstance) => {
   }
   return matches;
 };
-
 
 export const removeNonArabicWords = (text) => {
   // This regex matches Arabic characters, diacritics, and Arabic numerals
