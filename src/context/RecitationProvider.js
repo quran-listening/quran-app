@@ -18,21 +18,16 @@ import {
   findMultipleMatches,
 } from "../utils/recitationHelpers";
 
-// Utilities
-
-// Data
-import quran_eng from "../data/quran_eng.json";
-import quran_urd from "../data/quran_urd.json";
 import {
   surahNameArray,
   dataForWholeQuranSearchAbleFormat,
 } from "../data/static";
 
-import { searchInWholeQuranUrdu } from "../data/searchInWholeQuranUrdu";
 
 import { normalizeArabicText } from "../utils/normalizeArabicText";
 import { calculateSimilarity } from "../utils/quranUtils";
 import Fuse from "fuse.js";
+import { languagesData } from "../utils/constant";
 
 /**
  * The RecitationProvider manages all global states and methods
@@ -84,7 +79,7 @@ export const RecitationProvider = ({ children }) => {
   const interruptFlagRef = useRef(false);
   const matchesFoundRef = useRef(true);
   const wholeQuranDataRef = useRef(dataForWholeQuranSearchAbleFormat);
-  const quranDataRef = useRef(quran_eng);
+  const quranDataRef = useRef(null);
 
   const checkdCheckBoxRef = useRef(true);
 
@@ -107,6 +102,7 @@ export const RecitationProvider = ({ children }) => {
   const [pauseStartTime, setPauseStartTime] = useState(null);
   const [totalPausedTime, setTotalPausedTime] = useState(0);
   const [totalArabicWords, setTotalArabicWords] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentChunkStart] = useState(0);
 
   // Control flags
@@ -140,17 +136,54 @@ export const RecitationProvider = ({ children }) => {
     checkdCheckBoxRef.current = checkdCheckBox;
   }, [checkdCheckBox]);
 
-  // Update Quran Json On Language Change
+  // Fetch the quran data from the link
   useEffect(() => {
-    if (language) {
-      if (language === "english") {
-        quranDataRef.current = quran_eng;
-        wholeQuranDataRef.current = dataForWholeQuranSearchAbleFormat;
-      } else if (language === "urdu") {
-        quranDataRef.current = quran_urd;
-        wholeQuranDataRef.current = searchInWholeQuranUrdu;
-      }
-    }
+    setIsLoading(true);
+    const jsonCdnlink =
+    languagesData[language]?.jsonUrl ||
+      "https://cdn.jsdelivr.net/npm/quran-json@3.1.2/dist/quran_en.json";
+    fetch(jsonCdnlink)
+      .then((response) => response.json())
+      .then((data) => {
+        // Process each Surah
+        const updatedData = data.map((surah, index) => {
+          // Replace `id` with `surahId`
+          const modifiedSurah = { ...surah, surahId: surah.id };
+         
+
+          if (index === 0) {
+            // Remove only the first verse (id: 1)
+            const filteredVerses = surah.verses.filter(
+              (verse) => verse.id !== 1
+            );
+
+            // Reassign `verseId` starting from 1 for the remaining verses
+            const reindexedVerses = filteredVerses.map((verse, i) => ({
+              ...verse,
+              verseId: i + 1, // New ID starts from 1
+            }));
+
+            return {
+              ...modifiedSurah,
+              verses: reindexedVerses,
+              total_verses: reindexedVerses.length, // Update total_verses dynamically
+            };
+          }
+
+          // Update verse keys for other Surahs as well
+          return {
+            ...modifiedSurah,
+            verses: surah.verses.map((verse) => ({
+              ...verse,
+              verseId: verse.id, // Rename `id` to `verseId`
+            })),
+          };
+        });
+
+        quranDataRef.current = updatedData;
+        setIsLoading(false);
+      })
+      .catch((error) => console.error("Error fetching Quran JSON:", error));
   }, [language]);
 
   // --------------- 2) Adjust TTS Speed ---------------
@@ -675,6 +708,7 @@ export const RecitationProvider = ({ children }) => {
     stopListening,
     resetter,
     doSpeakTranslation, // if you need to speak a custom text anytime
+    isLoading,
   };
 
   return (
