@@ -21,6 +21,7 @@ export default function useSpeechRecognition({
   setTranslations,
   totalArabicWords,
   setTotalArabicWords,
+  autorecitationCheckRef
 }) {
   const recognitionRef = useRef(null);
   const debounceTimerRef = useRef(null);
@@ -60,12 +61,14 @@ export default function useSpeechRecognition({
       }
 
       // Start new silence timer
-      silenceTimerRef.current = setTimeout(() => {
-        console.log("Silence detected => stopping recognition.");
-        recognition.abort();
-        isListeningRef.current = false;
-        interruptFlagRef.current = true;
-      }, RECITATION_SILENCE_TIMEOUT);
+      if (autorecitationCheckRef.current === false) {
+        silenceTimerRef.current = setTimeout(() => {
+          console.log("Silence detected => stopping recognition.");
+          recognition.abort();
+          isListeningRef.current = false;
+          interruptFlagRef.current = true;
+        }, RECITATION_SILENCE_TIMEOUT);
+      }
 
       let interimTranscript = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
