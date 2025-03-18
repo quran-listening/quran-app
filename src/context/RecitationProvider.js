@@ -80,7 +80,7 @@ export const RecitationProvider = ({ children }) => {
   const matchesFoundRef = useRef(true);
   const wholeQuranDataRef = useRef(dataForWholeQuranSearchAbleFormat);
   const transcriptRef = useRef("");
-  const autorecitationCheckRef = useRef(false);
+  const autorecitationCheckRef = useRef(true);
   const quranDataRef = useRef(null);
 
   const checkdCheckBoxRef = useRef(true);
