@@ -1,5 +1,6 @@
 // src/utils/recitationHelpers.js
 
+import { languagesData } from "./constant";
 import { normalizeArabicText } from "./normalizeArabicText";
 import { calculateSimilarity, normatlizedData } from "./quranUtils"; // or wherever you keep it
 import Fuse from "fuse.js";
@@ -13,7 +14,7 @@ import Fuse from "fuse.js";
 export function searchInWholeQuran(
   transcript,
   {
-    quranData,
+    quranDataRef,
     wholeQuranDataRef,
     surahFlag,
     surahId,
@@ -23,17 +24,13 @@ export function searchInWholeQuran(
     rollingWindowRef,
     translationRecognizedTextRef,
     setTranslations,
-    autoReciteInProgressRef
+    autoReciteInProgressRef,
   }
 ) {
-  console.log("insearchInWholeQuran" );
   if (autoReciteInProgressRef.current) return;
-  const searchableVerses  = wholeQuranDataRef.current?.map((verse) => ({
-    ...verse,
-    normalizedText: normalizeArabicText(verse?.text),
-  }));
+
+  const searchableVerses = normatlizedData(wholeQuranDataRef.current);
   console.log("searchableVerses", searchableVerses);
-  // const searchableVerses = normatlizedData(wholeQuranDataRef.current);
   const fuse = new Fuse(searchableVerses, {
     keys: ["normalizedText"],
     threshold: 0.3,
@@ -55,8 +52,8 @@ export function searchInWholeQuran(
     surahFlag.current = true;
     surahId.current = foundSurahId;
     setSurahName(foundSurahName);
-    console.log("quranDataRef", quranData);
-    const surahDataItem = quranData[foundSurahId - 1];
+    const surahDataItem = quranDataRef.current[foundSurahId - 1];
+
     currentSurahData.current = surahDataItem;
     console.log("verseIndexFound", verseIndexFound);
     currentVerseIndexRef.current = verseIndexFound;
@@ -65,7 +62,7 @@ export function searchInWholeQuran(
     // const newWindow = initRollingWindow(surahDataItem, verseIndexFound);
     // rollingWindowRef.current = newWindow;
     // Set the matched verse text and translation
-    
+
     // const matchedVerse = surahDataItem?.verses[verseIndexFound];
     // translationRecognizedTextRef.current = matchedVerse?.text;
     // setTranslations([matchedVerse?.translation]);
@@ -192,11 +189,6 @@ export const loadNextChunk = (
   }
 };
 
-const selectLanguage = {
-  english: "en-US", // English language code
-  urdu: "ur-PK", // Urdu language code
-};
-
 /**
  * Speak out text (translation) using browser's SpeechSynthesis
  *
@@ -210,13 +202,28 @@ export function speakTranslation(text, { isMutedRef, ttsRate, language }) {
     console.error("Speech synthesis not supported");
     return;
   }
+  // Ensure voices are loaded (browsers may load them asynchronously)
+  setTimeout(() => {
+    const voices = synth.getVoices();
+    if (voices.length === 0) {
+      console.log("No voices available. Try reloading the page.");
+      return;
+    }
+
+    const supportedLanguages = voices.map((voice) => ({
+      name: voice.name,
+      lang: voice.lang,
+    }));
+
+    console.log("Supported TTS Languages:", supportedLanguages);
+  }, 1000);
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.volume = isMutedRef.current ? 0 : 1;
-  utterance.lang = selectLanguage[language] || "en-US"; // Set to English if no language found
+  utterance.lang = languagesData[language]?.code || "en-US"; // Use correct language code
+
   const finalRate =
     typeof ttsRate === "object" && ttsRate.current ? ttsRate.current : ttsRate;
-
 
   utterance.rate = Number(finalRate);
   utterance.pitch = 1.0; // Normal pitch
@@ -288,7 +295,6 @@ export const updateRollingWindow = (surahData, verseId) => {
 //   const fuseInstance = fuseInstanceFn(searchableVerses, 0.3);
 //   const results = findMultipleMatches(normalizedTranscript, fuseInstance);
 //   console.log("emptyResultsCounter.current", emptyResultsCounter.current);
-
 
 //   for (const el of results || []) {
 //     if (processedVersesRef.current?.has(el?.verseId)) {
@@ -408,7 +414,6 @@ export const findMultipleMatches = (transcript, fuseInstance) => {
   }
   return matches;
 };
-
 
 export const removeNonArabicWords = (text) => {
   // This regex matches Arabic characters, diacritics, and Arabic numerals
