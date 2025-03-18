@@ -1,5 +1,6 @@
 // src/utils/recitationHelpers.js
 
+import { languagesData } from "./constant";
 import { normalizeArabicText } from "./normalizeArabicText";
 import { calculateSimilarity, normatlizedData } from "./quranUtils"; // or wherever you keep it
 import Fuse from "fuse.js";
@@ -188,11 +189,6 @@ export const loadNextChunk = (
   }
 };
 
-const selectLanguage = {
-  english: "en-US", // English language code
-  urdu: "ur-PK", // Urdu language code
-};
-
 /**
  * Speak out text (translation) using browser's SpeechSynthesis
  *
@@ -206,10 +202,26 @@ export function speakTranslation(text, { isMutedRef, ttsRate, language }) {
     console.error("Speech synthesis not supported");
     return;
   }
+  // Ensure voices are loaded (browsers may load them asynchronously)
+  setTimeout(() => {
+    const voices = synth.getVoices();
+    if (voices.length === 0) {
+      console.log("No voices available. Try reloading the page.");
+      return;
+    }
+
+    const supportedLanguages = voices.map((voice) => ({
+      name: voice.name,
+      lang: voice.lang,
+    }));
+
+    console.log("Supported TTS Languages:", supportedLanguages);
+  }, 1000);
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.volume = isMutedRef.current ? 0 : 1;
-  utterance.lang = selectLanguage[language] || "en-US"; // Set to English if no language found
+  utterance.lang = languagesData[language]?.code || "en-US"; // Use correct language code
+
   const finalRate =
     typeof ttsRate === "object" && ttsRate.current ? ttsRate.current : ttsRate;
 
