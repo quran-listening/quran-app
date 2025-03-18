@@ -13,7 +13,7 @@ import Fuse from "fuse.js";
 export function searchInWholeQuran(
   transcript,
   {
-    quranData,
+    quranDataRef,
     wholeQuranDataRef,
     surahFlag,
     surahId,
@@ -23,17 +23,13 @@ export function searchInWholeQuran(
     rollingWindowRef,
     translationRecognizedTextRef,
     setTranslations,
-    autoReciteInProgressRef
+    autoReciteInProgressRef,
   }
 ) {
-  
   if (autoReciteInProgressRef.current) return;
-  const searchableVerses  = wholeQuranDataRef.current?.map((verse) => ({
-    ...verse,
-    normalizedText: normalizeArabicText(verse?.text),
-  }));
+
+  const searchableVerses = normatlizedData(wholeQuranDataRef.current);
   console.log("searchableVerses", searchableVerses);
-  // const searchableVerses = normatlizedData(wholeQuranDataRef.current);
   const fuse = new Fuse(searchableVerses, {
     keys: ["normalizedText"],
     threshold: 0.3,
@@ -55,20 +51,12 @@ export function searchInWholeQuran(
     surahFlag.current = true;
     surahId.current = foundSurahId;
     setSurahName(foundSurahName);
-    console.log("quranDataRef", quranData);
-    const surahDataItem = quranData[foundSurahId - 1];
+    const surahDataItem = quranDataRef.current[foundSurahId - 1];
+
     currentSurahData.current = surahDataItem;
     console.log("verseIndexFound", verseIndexFound);
     currentVerseIndexRef.current = verseIndexFound;
     autoReciteInProgressRef.current = true;
-
-    // const newWindow = initRollingWindow(surahDataItem, verseIndexFound);
-    // rollingWindowRef.current = newWindow;
-    // Set the matched verse text and translation
-    
-    // const matchedVerse = surahDataItem?.verses[verseIndexFound];
-    // translationRecognizedTextRef.current = matchedVerse?.text;
-    // setTranslations([matchedVerse?.translation]);
   } else {
     console.log("No matches found in whole Quran search");
   }
@@ -135,63 +123,6 @@ export const bismillahDetection = (transcript, speakTranslation, params) => {
   recognitionRef.current.stop();
 };
 
-/**
- * Loads the next chunk of verses from a surah with normalized text and translations.
- *
- * @param {Object} params - Parameters object
- * @param {number} params.surahLength - Total number of verses in the surah
- * @param {Array} params.surahVerses - Array of verse objects from the surah
- * @param {number} params.currentChunkStart - Starting index for the current chunk
- * @param {number} params.chunkSize - Number of verses to load in each chunk
- * @param {Array} params.currentList - Current list of loaded verses
- * @param {Function} params.setVersesList - State setter function for verses list
- * @returns {Object} - Object containing the updated list and next chunk start position
- */
-export const loadNextChunk = (
-  surahLength,
-  surahVerses,
-  { currentSurahData, nextChunkStart }
-) => {
-  const chunkSize = 2;
-
-  try {
-    // Ensure nextChunkStart is initialized
-    nextChunkStart.current = nextChunkStart.current || 0;
-
-    // Ensure currentSurahData.current is an array
-    if (!Array.isArray(currentSurahData.current)) {
-      currentSurahData.current = [];
-    }
-
-    // Calculate the end of the current chunk
-    const chunkEnd = Math.min(nextChunkStart.current + chunkSize, surahLength);
-
-    // Process the next chunk of verses
-    const versesChunk = (Array.isArray(surahVerses) ? surahVerses : [])
-      .slice(nextChunkStart.current, chunkEnd)
-      .map((verse) => ({
-        id: verse?.verseId,
-        text: verse?.text || "",
-        normalizedText: normalizeArabicText(verse?.text || ""),
-        translation: verse?.translation || "",
-      }));
-
-    if (versesChunk.length === 0) {
-      console.log(
-        `No verses loaded. Current start: ${nextChunkStart.current}, End: ${chunkEnd}`
-      );
-    }
-
-    // Append new verses to the array
-    currentSurahData.current = [...currentSurahData.current, ...versesChunk];
-
-    // Update next chunk start
-    nextChunkStart.current = chunkEnd;
-  } catch (error) {
-    console.log("Error loading next verses chunk:", error);
-  }
-};
-
 const selectLanguage = {
   english: "en-US", // English language code
   urdu: "ur-PK", // Urdu language code
@@ -216,7 +147,6 @@ export function speakTranslation(text, { isMutedRef, ttsRate, language }) {
   utterance.lang = selectLanguage[language] || "en-US"; // Set to English if no language found
   const finalRate =
     typeof ttsRate === "object" && ttsRate.current ? ttsRate.current : ttsRate;
-
 
   utterance.rate = Number(finalRate);
   utterance.pitch = 1.0; // Normal pitch
@@ -288,7 +218,6 @@ export const updateRollingWindow = (surahData, verseId) => {
 //   const fuseInstance = fuseInstanceFn(searchableVerses, 0.3);
 //   const results = findMultipleMatches(normalizedTranscript, fuseInstance);
 //   console.log("emptyResultsCounter.current", emptyResultsCounter.current);
-
 
 //   for (const el of results || []) {
 //     if (processedVersesRef.current?.has(el?.verseId)) {
@@ -408,7 +337,6 @@ export const findMultipleMatches = (transcript, fuseInstance) => {
   }
   return matches;
 };
-
 
 export const removeNonArabicWords = (text) => {
   // This regex matches Arabic characters, diacritics, and Arabic numerals
