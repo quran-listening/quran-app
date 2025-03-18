@@ -66,6 +66,7 @@ const RecitationContainer = () => {
     startListening,
     stopListening,
     handleMute,
+    autorecitationCheckRef,
     isLoading,
   } = useContext(RecitationContext);
 
@@ -94,6 +95,8 @@ const RecitationContainer = () => {
   const [timerInterval, setTimerInterval] = useState(null);
   const [matchesFound, setMatchesFound] = useState(true);
   const [surahData, setSurahData] = useState(currentSurahData);
+
+  const [autoRecitation, setAutoRecitation] = useState(false);
 
   const navigate = useNavigate();
 
@@ -185,6 +188,14 @@ const RecitationContainer = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recognizedText]);
 
+  useEffect(() => {
+    if (autoRecitation) {
+      autorecitationCheckRef.current = true;
+    } else {
+      autorecitationCheckRef.current = false;
+    }
+  }, [autoRecitation]);
+
   // Format time function
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
@@ -221,7 +232,7 @@ const RecitationContainer = () => {
 
   // Add handler for TTS rate changes
   const handleTTSRateChange = (change) => {
-    const newRate = Math.max(1.0, Math.min(2.0, ttsRateState + change));
+    const newRate = Math.max(1.0, Math.min(1.5, ttsRateState + change));
     setTtsRateState(newRate);
     // ttsRate.current = newRate;
   };
@@ -446,19 +457,6 @@ const RecitationContainer = () => {
                       </Box>
                     )}
                     <Box>
-                      {/* {previousAyaList?.length === 0 &&
-                      surahData?.name && (
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "center",
-                            fontSize: "18px",
-                            marginBottom: "10px",
-                          }}
-                        >
-                          Surah: {surahData?.name}
-                        </Box>
-                      )} */}
 
                       {previousAyaList?.length > 0 ? (
                         previousAyaList?.map(
@@ -698,18 +696,33 @@ const RecitationContainer = () => {
                     </Typography>
                   </Box>
                   <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      alignItems: "center",
-                      color: "#fff",
-                      mt: 1,
-                    }}
-                  >
-                    <Typography sx={{ color: "#fff" }}>
-                      Time: {formatTime(elapsedTime)}
+                  sx={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    alignItems: "center",
+                    color: "#fff",
+                    mt: 1,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                    <Checkbox
+                      sx={{
+                        color: "#fff",
+                        "&.Mui-checked": {
+                          color: "#fff",
+                        },
+                      }}
+                      checked={autoRecitation}
+                      onChange={(e) => setAutoRecitation(e.target.checked)}
+                    />
+                    <Typography sx={{ color: "#fff", marginLeft: "5px" }}>
+                      Auto Recitation
                     </Typography>
                   </Box>
+                  <Typography sx={{ color: "#fff" }}>
+                    Time: {formatTime(elapsedTime)}
+                  </Typography>
+                </Box>
                 </Grid>
               </Grid>
 

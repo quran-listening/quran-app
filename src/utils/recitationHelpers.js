@@ -58,14 +58,6 @@ export function searchInWholeQuran(
     console.log("verseIndexFound", verseIndexFound);
     currentVerseIndexRef.current = verseIndexFound;
     autoReciteInProgressRef.current = true;
-
-    // const newWindow = initRollingWindow(surahDataItem, verseIndexFound);
-    // rollingWindowRef.current = newWindow;
-    // Set the matched verse text and translation
-
-    // const matchedVerse = surahDataItem?.verses[verseIndexFound];
-    // translationRecognizedTextRef.current = matchedVerse?.text;
-    // setTranslations([matchedVerse?.translation]);
   } else {
     console.log("No matches found in whole Quran search");
   }
@@ -132,62 +124,6 @@ export const bismillahDetection = (transcript, speakTranslation, params) => {
   recognitionRef.current.stop();
 };
 
-/**
- * Loads the next chunk of verses from a surah with normalized text and translations.
- *
- * @param {Object} params - Parameters object
- * @param {number} params.surahLength - Total number of verses in the surah
- * @param {Array} params.surahVerses - Array of verse objects from the surah
- * @param {number} params.currentChunkStart - Starting index for the current chunk
- * @param {number} params.chunkSize - Number of verses to load in each chunk
- * @param {Array} params.currentList - Current list of loaded verses
- * @param {Function} params.setVersesList - State setter function for verses list
- * @returns {Object} - Object containing the updated list and next chunk start position
- */
-export const loadNextChunk = (
-  surahLength,
-  surahVerses,
-  { currentSurahData, nextChunkStart }
-) => {
-  const chunkSize = 2;
-
-  try {
-    // Ensure nextChunkStart is initialized
-    nextChunkStart.current = nextChunkStart.current || 0;
-
-    // Ensure currentSurahData.current is an array
-    if (!Array.isArray(currentSurahData.current)) {
-      currentSurahData.current = [];
-    }
-
-    // Calculate the end of the current chunk
-    const chunkEnd = Math.min(nextChunkStart.current + chunkSize, surahLength);
-
-    // Process the next chunk of verses
-    const versesChunk = (Array.isArray(surahVerses) ? surahVerses : [])
-      .slice(nextChunkStart.current, chunkEnd)
-      .map((verse) => ({
-        id: verse?.verseId,
-        text: verse?.text || "",
-        normalizedText: normalizeArabicText(verse?.text || ""),
-        translation: verse?.translation || "",
-      }));
-
-    if (versesChunk.length === 0) {
-      console.log(
-        `No verses loaded. Current start: ${nextChunkStart.current}, End: ${chunkEnd}`
-      );
-    }
-
-    // Append new verses to the array
-    currentSurahData.current = [...currentSurahData.current, ...versesChunk];
-
-    // Update next chunk start
-    nextChunkStart.current = chunkEnd;
-  } catch (error) {
-    console.log("Error loading next verses chunk:", error);
-  }
-};
 
 /**
  * Speak out text (translation) using browser's SpeechSynthesis

@@ -22,11 +22,11 @@ import {
   surahNameArray,
   dataForWholeQuranSearchAbleFormat,
 } from "../data/static";
+import surahLastAyah from "../data/surahLastAyah.json";
 
 
 import { normalizeArabicText } from "../utils/normalizeArabicText";
 import { calculateSimilarity } from "../utils/quranUtils";
-import Fuse from "fuse.js";
 import { languagesData } from "../utils/constant";
 
 /**
@@ -79,6 +79,8 @@ export const RecitationProvider = ({ children }) => {
   const interruptFlagRef = useRef(false);
   const matchesFoundRef = useRef(true);
   const wholeQuranDataRef = useRef(dataForWholeQuranSearchAbleFormat);
+  const transcriptRef = useRef("");
+  const autorecitationCheckRef = useRef(false);
   const quranDataRef = useRef(null);
 
   const checkdCheckBoxRef = useRef(true);
@@ -207,9 +209,9 @@ export const RecitationProvider = ({ children }) => {
 
     let newRate = 1.0;
     if (wpm > 200) {
-      newRate = 2.0;
+      newRate = 1.5;
     } else if (wpm > 100) {
-      newRate = 1.75;
+      newRate = 1.5;
     } else if (wpm > 90) {
       newRate = 1.5;
     } else if (wpm > 80) {
@@ -255,11 +257,12 @@ export const RecitationProvider = ({ children }) => {
   const handleNoTranscriptTimeout = () => {
     const currentTime = Date.now();
     const timeSinceLastTranscript = currentTime - lastTranscriptTimeRef.current;
-
-    if (timeSinceLastTranscript >= 9000) {
-      // 10 seconds
-      console.log("No transcript for 9 seconds, resetting...");
+    
+    if (timeSinceLastTranscript >= 6500) {
+      if (autorecitationCheckRef.current === false) {
+      console.log("No transcript for 6.5 seconds, resetting...");
       resetter();
+      }
     } else {
       // Schedule next check
       noTranscriptTimeoutRef.current = setTimeout(
@@ -270,7 +273,7 @@ export const RecitationProvider = ({ children }) => {
   };
 
   const checkForMatches = (main_transcript) => {
-    console.log("checkForMatches", main_transcript);
+    transcriptRef.current = main_transcript;
     // Clean the transcript to only include Arabic words
     const transcript = removeNonArabicWords(main_transcript);
     // Update last transcript time
@@ -284,7 +287,28 @@ export const RecitationProvider = ({ children }) => {
       1000
     );
 
-    const GairilMaghzobiTranscript = "غير المغضوب عليهم ولا الضالين";
+    // Get the last ayah of current surah if one is selected
+    const currentSurahLastAyah = surahId.current > 0 
+      ? surahLastAyah.find(ayah => ayah.surahId === surahId.current)
+      : null;
+
+    // Only check for last ayah if we're in a surah
+    if (currentSurahLastAyah && surahFlag.current) {
+      const normalizedTranscript = normalizeArabicText(transcript);
+      const normalizedLastAyah = normalizeArabicText(currentSurahLastAyah.normalizedText);
+      
+      // Calculate similarity between transcript and last ayah
+      const similarity = calculateSimilarity(normalizedTranscript, normalizedLastAyah);
+      
+      if (similarity > 0.8) { // You can adjust this threshold
+        console.log("Last ayah of surah detected");
+        resetter();
+        return;
+      }
+    }
+
+    const GairilMaghzobiTranscript = "غير المغضوب عليهم";
+    
     if (transcript?.includes(GairilMaghzobiTranscript)) {
       resetter();
       return;
@@ -387,11 +411,7 @@ export const RecitationProvider = ({ children }) => {
                 surahDataItem?.verses?.[0]?.verseId;
               surahFlag.current = true;
               surahNameArrayFlag.current = true;
-              console.log(
-                "checkForMatches1234",
-                surahFlag.current,
-                surahId.current
-              );
+              
               break;
             }
             // Set states for the found surah
@@ -457,17 +477,18 @@ export const RecitationProvider = ({ children }) => {
             console.log("------------------------\n");
 
             // The inline function to check transcripts
-            const checkTranscriptMatch = (accumulatedTranscript) => {
+            const checkTranscriptMatch = () => {
               // Clear existing silence timer
               if (silenceTimerRef.current) {
                 clearTimeout(silenceTimerRef.current);
               }
 
               // Restart silence timer
-              silenceTimerRef.current = setTimeout(() => {
-                console.log(
-                  "⚠️ Silence detected for 3 seconds during recitation - stopping"
-                );
+              if (autorecitationCheckRef.current === false) {
+                silenceTimerRef.current = setTimeout(() => {
+                  console.log(
+                    "⚠️ Silence detected for 6.5 seconds during recitation - stopping"
+                  );
                 if (recognitionRef.current) {
                   isListeningRef.current = false;
                   interruptFlagRef.current = true;
@@ -475,6 +496,7 @@ export const RecitationProvider = ({ children }) => {
                   currentSurahData.current = null;
                 }
               }, RECITATION_SILENCE_TIMEOUT);
+            }
 
               // Get current rolling window verses
               const currentWindow = rollingWindowRef.current;
@@ -484,15 +506,10 @@ export const RecitationProvider = ({ children }) => {
                 ...verse,
                 normalizedText: normalizeArabicText(verse?.text),
               }));
-              const normalizedTranscript = normalizeArabicText(
-                accumulatedTranscript
-              );
+              const normalizedTranscript = normalizeArabicText(transcriptRef.current);
               const fuseInstance = fuseInstanceFn(searchableVerses, 0.4);
-              const results = findMultipleMatches(
-                normalizedTranscript,
-                fuseInstance
-              );
-              console.log("autorecitation results", accumulatedTranscript);
+              const results = findMultipleMatches(normalizedTranscript, fuseInstance);
+              console.log("autorecitation results", transcriptRef.current);
 
               // Check if window is empty
               if (!results || results.length === 0) {
@@ -526,6 +543,7 @@ export const RecitationProvider = ({ children }) => {
               ttsRate: ttsRate.current,
               language,
             });
+            console.log("currentSurahDatadd", currentSurahData.current);
             setPreviousAyaList((prev) => [
               ...prev,
               {
@@ -548,7 +566,6 @@ export const RecitationProvider = ({ children }) => {
 
           // Done reciting
           console.log("Done reciting Surah:", currentSurahData.current);
-          resetter();
         } catch (error) {
           console.error("Error in reciteEntireSurah:", error);
           resetter();
@@ -662,6 +679,7 @@ export const RecitationProvider = ({ children }) => {
     setTranslations,
     totalArabicWords,
     setTotalArabicWords,
+    autorecitationCheckRef
   });
 
   // --------------- 9) Provide all states & methods ---------------
@@ -691,6 +709,7 @@ export const RecitationProvider = ({ children }) => {
     totalPausedTime,
     totalArabicWords,
     interruptFlagRef,
+    autorecitationCheckRef,
 
     // Constants
     ROLLING_WINDOW_SIZE,
