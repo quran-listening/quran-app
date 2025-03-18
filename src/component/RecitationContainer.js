@@ -79,6 +79,7 @@ const RecitationContainer = () => {
     setSelectedSpeaker,
   } = useMicrophone();
 
+  const viewWidth = window.innerWidth;
   const ayatListRef = useRef(null);
   const [ttsRateState, setTtsRateState] = useState(ttsRate.current);
   // const [ttsRateState, setTtsRateState] = useState(1.00);
@@ -96,7 +97,7 @@ const RecitationContainer = () => {
   const [matchesFound, setMatchesFound] = useState(true);
   const [surahData, setSurahData] = useState(currentSurahData);
 
-  const [autoRecitation, setAutoRecitation] = useState(false);
+  const [autoRecitation, setAutoRecitation] = useState(true);
 
   const navigate = useNavigate();
 
@@ -164,12 +165,16 @@ const RecitationContainer = () => {
   useEffect(() => {
     if (checkdCheckBox) {
       setTtsRateState(ttsRate.current);
+    }else{
+      setTtsRateState(1.0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ttsRate.current]);
 
   useEffect(() => {
     if (checkdCheckBox) {
+      setTtsRateState(1.0);
+    }else{
       setTtsRateState(1.0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -232,7 +237,7 @@ const RecitationContainer = () => {
 
   // Add handler for TTS rate changes
   const handleTTSRateChange = (change) => {
-    const newRate = Math.max(1.0, Math.min(1.5, ttsRateState + change));
+    const newRate = Math.max(0.7, Math.min(1.5, ttsRateState + change));
     setTtsRateState(newRate);
     // ttsRate.current = newRate;
   };
@@ -401,6 +406,7 @@ const RecitationContainer = () => {
                         </Tooltip>
                       </div>
                     </ClickAwayListener>
+
                   </Box>
 
                   <Box
@@ -534,6 +540,21 @@ const RecitationContainer = () => {
                 </Grid>
 
                 <Grid item xs={12} sm={12} md={6} lg={4}>
+                <Box sx={{ display:viewWidth <= 900 ? 'flex' : 'none', alignItems: 'center', mr: 2,justifyContent: 'flex-end' }}>
+                    <Checkbox
+                      sx={{
+                        color: "#fff",
+                        "&.Mui-checked": {
+                          color: "#fff",
+                        },
+                      }}
+                      checked={autoRecitation}
+                      onChange={(e) => setAutoRecitation(e.target.checked)}
+                    />
+                    <Typography sx={{ color: "#fff", marginLeft: "5px",fontSize: "15px" }}>
+                      Auto Recitation until "اللّٰهُ أَكْبَرْ"
+                    </Typography>
+                  </Box>
                   <Box
                     sx={{
                       display: "flex",
@@ -630,7 +651,7 @@ const RecitationContainer = () => {
                   </Box>
                 </Grid>
 
-                <Grid item xs={12} sm={12} md={6} lg={4}>
+                <Grid item xs={12} sm={12} md={12} lg={4}>
                   <Box
                     sx={{
                       display: "flex",
@@ -641,7 +662,7 @@ const RecitationContainer = () => {
                   >
                     <Box mr={1} sx={{ color: "#fff", display: "flex" }}>
                       {" "}
-                      Translation Speed ={" "}
+                      <Typography sx={{ color: "#fff", fontSize: "15px" }}>Translation Speed ={" "}</Typography>
                       {!checkdCheckBox && (
                         <Box
                           sx={{
@@ -684,14 +705,14 @@ const RecitationContainer = () => {
                       sx={{
                         color: "#fff",
                         "&.Mui-checked": {
-                          color: "#fff", // Color when checked
+                          color: "#fff", 
                         },
                       }}
                       checked={checkdCheckBox}
                       onChange={handleCheckBoxChange}
                       inputProps={{ "aria-label": "controlled" }}
                     />
-                    <Typography sx={{ color: "#fff", marginLeft: "5px" }}>
+                    <Typography sx={{ color: "#fff", marginLeft: "5px",fontSize: "14px" }}>
                       Auto
                     </Typography>
                   </Box>
@@ -704,7 +725,7 @@ const RecitationContainer = () => {
                     mt: 1,
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                  <Box sx={{ display:viewWidth > 900 ? 'flex' : 'none', alignItems: 'center', mr: 2,justifyContent: 'flex-end' }}>
                     <Checkbox
                       sx={{
                         color: "#fff",
@@ -716,7 +737,7 @@ const RecitationContainer = () => {
                       onChange={(e) => setAutoRecitation(e.target.checked)}
                     />
                     <Typography sx={{ color: "#fff", marginLeft: "5px" }}>
-                      Auto Recitation
+                      Auto Recitation until "اللّٰهُ أَكْبَرْ"
                     </Typography>
                   </Box>
                   <Typography sx={{ color: "#fff" }}>
