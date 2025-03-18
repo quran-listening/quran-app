@@ -3,7 +3,7 @@ import RecitationContainer from "./component/RecitationContainer";
 import { RecitationProvider } from "./context/RecitationProvider";
 import { Routes, Route, BrowserRouter } from 'react-router-dom';
 import BecomeDev from './component/BecomeDev';
-import QuranSurahConverter from "./component/QuranSurahConverter";
+// import LastAyahConverter from "./component/LastAyahConverter";
 
 function App() {
   return (
@@ -13,6 +13,7 @@ function App() {
         <Route path="/" element={<RecitationContainer />} />
         <Route path="/dev" element={<BecomeDev />} />
         {/* <Route path="/convert" element={<QuranSurahConverter />} /> */}
+        {/* <Route path="/convert" element={<LastAyahConverter />} /> */}
       </Routes>
       </BrowserRouter>
     </RecitationProvider>

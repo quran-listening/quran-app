@@ -41,6 +41,7 @@ import {
 import useMicrophone from "../hooks/useMicrophones";
 import LiveMicVisualizer from "./LiveMicVisualizer";
 import FeedbackForm from "./FeedbackForm";
+import { ClickAwayListener, Tooltip } from "@mui/material";
 
 const RecitationContainer = () => {
   const {
@@ -64,6 +65,7 @@ const RecitationContainer = () => {
     startListening,
     stopListening,
     handleMute,
+    autorecitationCheckRef,
   } = useContext(RecitationContext);
 
   const {
@@ -92,6 +94,8 @@ const RecitationContainer = () => {
   const [matchesFound, setMatchesFound] = useState(true);
   const [surahData, setSurahData] = useState(currentSurahData);
 
+  const [autoRecitation, setAutoRecitation] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -119,8 +123,11 @@ const RecitationContainer = () => {
   const year = date.toLocaleDateString("en-US", { year: "numeric" });
   const formattedDate = `${weekday}, ${day} ${month} ${year}`;
 
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+
   const handleLanguageChange = (event, value) => {
     setLanguage(value);
+    localStorage.setItem('language', value);
   };
 
   const handleCheckBoxChange = () => {
@@ -129,7 +136,15 @@ const RecitationContainer = () => {
     setCheckdCheckBox((prev) => !prev);
   };
 
+  const handleTooltipClose = () => {
+    setTooltipOpen(false);
+  };
+
   const handleMuteChange = () => {
+    if (language === "urdu") {
+      setTooltipOpen(true);
+      return;
+    }
     handleMute();
     setIsMuted((prev) => !prev);
   };
@@ -170,6 +185,14 @@ const RecitationContainer = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recognizedText]);
+
+  useEffect(() => {
+    if (autoRecitation) {
+      autorecitationCheckRef.current = true;
+    } else {
+      autorecitationCheckRef.current = false;
+    }
+  }, [autoRecitation]);
 
   // Format time function
   const formatTime = (seconds) => {
@@ -327,23 +350,42 @@ const RecitationContainer = () => {
                       <LiveMicVisualizer />
                     </Box>
                   </Box>
-                  <Box
-                    onClick={handleMuteChange}
-                    style={{
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      alignItems: "flex-end",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <img
-                      id="muteIcon"
-                      src={isMuted ? muteIcon : unmuteIcon}
-                      alt={isMuted ? "Unmute" : "Mute"}
-                      width={25}
-                      height={25}
-                    />
-                  </Box>
+
+                  <ClickAwayListener onClickAway={handleTooltipClose}>
+                    <div>
+                      <Tooltip
+                        PopperProps={{
+                          disablePortal: true,
+                        }}
+                        onClose={handleTooltipClose}
+                        open={tooltipOpen && language === "urdu"}
+                        disableFocusListener
+                        disableHoverListener
+                        disableTouchListener
+                        title="Coming Soon"
+                        placement="top" // Add this line to show tooltip on top
+                        arrow // Add this to show an arrow pointing to the element
+                      >
+                        <Box
+                          onClick={handleMuteChange}
+                          style={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            alignItems: "flex-end",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <img
+                            id="muteIcon"
+                            src={isMuted ? muteIcon : unmuteIcon}
+                            alt={isMuted ? "Unmute" : "Mute"}
+                            width={25}
+                            height={25}
+                          />
+                        </Box>
+                      </Tooltip>
+                    </div>
+                  </ClickAwayListener>
                 </Box>
 
                 <Box
@@ -400,20 +442,6 @@ const RecitationContainer = () => {
                     </Box>
                   )}
                   <Box>
-                    {/* {previousAyaList?.length === 0 &&
-                      surahData?.name && (
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "center",
-                            fontSize: "18px",
-                            marginBottom: "10px",
-                          }}
-                        >
-                          Surah: {surahData?.name}
-                        </Box>
-                      )} */}
-
                     {previousAyaList?.length > 0 ? (
                       previousAyaList?.map(
                         (
@@ -595,8 +623,8 @@ const RecitationContainer = () => {
                     color: "#fff",
                   }}
                 >
-                  <Box mr={1} sx={{ color: "#fff", display: "flex" }}>
-                    Time: {formatTime(elapsedTime)} | Translation Speed ={" "}
+                  <Box mr={1} sx={{ color: "#fff", display: "flex" }}>                    
+                    Translation Speed ={" "}
                     {!checkdCheckBox && (
                       <Box
                         sx={{
@@ -648,6 +676,34 @@ const RecitationContainer = () => {
                   />
                   <Typography sx={{ color: "#fff", marginLeft: "5px" }}>
                     Auto
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    alignItems: "center",
+                    color: "#fff",
+                    mt: 1,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                    <Checkbox
+                      sx={{
+                        color: "#fff",
+                        "&.Mui-checked": {
+                          color: "#fff",
+                        },
+                      }}
+                      checked={autoRecitation}
+                      onChange={(e) => setAutoRecitation(e.target.checked)}
+                    />
+                    <Typography sx={{ color: "#fff", marginLeft: "5px" }}>
+                      Auto Recitation
+                    </Typography>
+                  </Box>
+                  <Typography sx={{ color: "#fff" }}>
+                    Time: {formatTime(elapsedTime)}
                   </Typography>
                 </Box>
               </Grid>
@@ -782,7 +838,22 @@ const RecitationContainer = () => {
               >
                 this reference
               </a>
-            </Box>  
+            </Box>
+            <Box
+              sx={{ marginTop: "10px", textAlign: "center", fontSize: "14px" }}
+            >
+              <p style={{ color: "#fff", textAlign: "center", margin: "0" }}>
+                The Urdu version of the Quran Json is taken from{" "}
+              </p>
+              <a
+                href="https://cdn.jsdelivr.net/npm/quran-json@3.1.2/dist/quran_ur.json"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#fff" }}
+              >
+                this reference
+              </a>
+            </Box>
           </Box>
         )}
       </Box>
