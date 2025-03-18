@@ -12,7 +12,7 @@ import {
   Checkbox,
 } from "@mui/joy";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 
@@ -838,36 +838,9 @@ const RecitationContainer = () => {
                   fontSize: "14px",
                 }}
               >
-                <p style={{ color: "#fff", textAlign: "center", margin: "0" }}>
-                  The English version of the Quran Json is taken from{" "}
-                </p>
-                <a
-                  href="https://cdn.jsdelivr.net/npm/quran-json@3.1.2/dist/quran_en.json"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: "#fff" }}
-                >
-                  this reference
-                </a>
-              </Box>
-              <Box
-                sx={{
-                  marginTop: "10px",
-                  textAlign: "center",
-                  fontSize: "14px",
-                }}
-              >
-                <p style={{ color: "#fff", textAlign: "center", margin: "0" }}>
-                  The Urdu version of the Quran Json is taken from{" "}
-                </p>
-                <a
-                  href="https://cdn.jsdelivr.net/npm/quran-json@3.1.2/dist/quran_ur.json"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: "#fff" }}
-                >
-                  this reference
-                </a>
+                <Link to="/reference" style={{ color: "#fff" }}>
+                  For Translation Reference
+                </Link>
               </Box>
             </Box>
           )}
