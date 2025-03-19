@@ -68,6 +68,7 @@ const RecitationContainer = () => {
     stopListening,
     handleMute,
     autorecitationCheckRef,
+    quranDataRef,
     isLoading,
     jumpToVerse,
     resetter,
@@ -266,11 +267,13 @@ const RecitationContainer = () => {
       setSurahError("");
     }
 
+    const total_verses = quranDataRef.current[surahNumber - 1].verses.length;
+
     // Validate verse number (positive number)
     if (!verseNumber) {
       setVerseError("Verse number is required");
       isValid = false;
-    } else if (verseNumber < 1) {
+    } else if (verseNumber < 1 || verseNumber > total_verses) {
       setVerseError("Verse number must be positive");
       isValid = false;
     } else {
