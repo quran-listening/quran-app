@@ -68,8 +68,10 @@ const RecitationContainer = () => {
     stopListening,
     handleMute,
     autorecitationCheckRef,
+    quranDataRef,
     isLoading,
     jumpToVerse,
+    resetter,
   } = useContext(RecitationContext);
 
   const {
@@ -103,6 +105,9 @@ const RecitationContainer = () => {
   // Add these state declarations near other useState declarations
   const [surahNumber, setSurahNumber] = useState("");
   const [verseNumber, setVerseNumber] = useState("");
+   // Add these new state variables near other useState declarations
+   const [surahError, setSurahError] = useState("");
+   const [verseError, setVerseError] = useState("");
 
   const navigate = useNavigate();
 
@@ -247,11 +252,54 @@ const RecitationContainer = () => {
     // ttsRate.current = newRate;
   };
 
-  // Add this handler function
+  // Add this validation function
+  const validateInputs = () => {
+    let isValid = true;
+    
+    // Validate surah number (1-114)
+    if (!surahNumber) {
+      setSurahError("Surah number is required");
+      isValid = false;
+    } else if (surahNumber < 1 || surahNumber > 114) {
+      setSurahError("Surah number must be between 1 and 114");
+      isValid = false;
+    } else {
+      setSurahError("");
+    }
+
+    const total_verses = quranDataRef.current[surahNumber - 1].verses.length;
+
+    // Validate verse number (positive number)
+    if (!verseNumber) {
+      setVerseError("Verse number is required");
+      isValid = false;
+    } else if (verseNumber < 1 || verseNumber > total_verses) {
+      setVerseError("Verse number must be positive");
+      isValid = false;
+    } else {
+      setVerseError("");
+    }
+
+    return isValid;
+  };
+
+  // Update the handleJumpToVerse function
   const handleJumpToVerse = () => {
-    if (surahNumber && verseNumber) {
+    if (validateInputs()) {
+      resetter();
       jumpToVerse(parseInt(surahNumber), parseInt(verseNumber));
     }
+  };
+
+  // Update the input handlers to clear errors on change
+  const handleSurahChange = (e) => {
+    setSurahNumber(e.target.value);
+    setSurahError("");
+  };
+
+  const handleVerseChange = (e) => {
+    setVerseNumber(e.target.value);
+    setVerseError("");
   };
 
   // Render
@@ -429,16 +477,53 @@ const RecitationContainer = () => {
                         placeholder="surah number"
                         type="number"
                         value={surahNumber}
-                        onChange={(e) => setSurahNumber(e.target.value)}
-                        sx={{ marginRight: 1 }}
+                        onChange={handleSurahChange}
+                        sx={{ 
+                          marginRight: 1,
+                          '&.Mui-error': {
+                            borderColor: '#f44336',
+                          },
+                          ...(surahError && {
+                            borderColor: '#f44336',
+                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                          })
+                        }}
+                        error={!!surahError}
+                        helperText={surahError}
                       />
                       <Input
                         style={{ width: viewWidth<600?"100%": "150px" }}
                         placeholder="verse number"
                         type="number"
                         value={verseNumber}
-                        onChange={(e) => setVerseNumber(e.target.value)}
-                        sx={{ marginRight: 1 }}
+                        onChange={handleVerseChange}
+                        sx={{ 
+                          marginRight: 1,
+                          '&.Mui-error': {
+                            borderColor: '#f44336',
+                          },
+                          ...(verseError && {
+                            borderColor: '#f44336 !important',
+                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                            '& input': {
+                              color: '#f44336',
+                            }
+                          })
+                        }}
+                        error={!!verseError}
+                        slotProps={{
+                          input: {
+                            sx: {
+                              '--Input-decoratorChildHeight': '45px',
+                            },
+                          },
+                          helperText: {
+                            sx: {
+                              color: '#f44336',
+                              mt: 0.5,
+                            },
+                          },
+                        }}
                       />
                       <Button
                         onClick={handleJumpToVerse}
