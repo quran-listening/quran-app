@@ -763,6 +763,7 @@ export const RecitationProvider = ({ children }) => {
     totalArabicWords,
     interruptFlagRef,
     autorecitationCheckRef,
+    quranDataRef,
 
     // Constants
     ROLLING_WINDOW_SIZE,
