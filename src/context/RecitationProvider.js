@@ -142,7 +142,7 @@ export const RecitationProvider = ({ children }) => {
   useEffect(() => {
     setIsLoading(true);
     const jsonCdnlink =
-    languagesData[language]?.jsonUrl ||
+      languagesData[language]?.jsonUrl ||
       "https://cdn.jsdelivr.net/npm/quran-json@3.1.2/dist/quran_en.json";
     fetch(jsonCdnlink)
       .then((response) => response.json())
@@ -151,7 +151,7 @@ export const RecitationProvider = ({ children }) => {
         const updatedData = data.map((surah, index) => {
           // Replace `id` with `surahId`
           const modifiedSurah = { ...surah, surahId: surah.id };
-         
+
 
           if (index === 0) {
             // Remove only the first verse (id: 1)
@@ -218,8 +218,10 @@ export const RecitationProvider = ({ children }) => {
       newRate = 1.25;
     } else if (wpm > 60) {
       newRate = 1.0;
-    } else {
+    } else if (wpm <=10 || wpm >= 40) {
       newRate = 0.85;
+    } else {
+      newRate = 1.0;
     }
 
     ttsRate.current = newRate;
@@ -257,11 +259,11 @@ export const RecitationProvider = ({ children }) => {
   const handleNoTranscriptTimeout = () => {
     const currentTime = Date.now();
     const timeSinceLastTranscript = currentTime - lastTranscriptTimeRef.current;
-    
+
     if (timeSinceLastTranscript >= 6500) {
       if (autorecitationCheckRef.current === false) {
-      console.log("No transcript for 6.5 seconds, resetting...");
-      resetter();
+        console.log("No transcript for 6.5 seconds, resetting...");
+        resetter();
       }
     } else {
       // Schedule next check
@@ -288,7 +290,7 @@ export const RecitationProvider = ({ children }) => {
     );
 
     // Get the last ayah of current surah if one is selected
-    const currentSurahLastAyah = surahId.current > 0 
+    const currentSurahLastAyah = surahId.current > 0
       ? surahLastAyah.find(ayah => ayah.surahId === surahId.current)
       : null;
 
@@ -296,10 +298,10 @@ export const RecitationProvider = ({ children }) => {
     if (currentSurahLastAyah && surahFlag.current) {
       const normalizedTranscript = normalizeArabicText(transcript);
       const normalizedLastAyah = normalizeArabicText(currentSurahLastAyah.normalizedText);
-      
+
       // Calculate similarity between transcript and last ayah
       const similarity = calculateSimilarity(normalizedTranscript, normalizedLastAyah);
-      
+
       if (similarity > 0.8) { // You can adjust this threshold
         console.log("Last ayah of surah detected");
         resetter();
@@ -308,7 +310,7 @@ export const RecitationProvider = ({ children }) => {
     }
 
     const GairilMaghzobiTranscript = "غير المغضوب عليهم";
-    
+
     if (transcript?.includes(GairilMaghzobiTranscript)) {
       resetter();
       return;
@@ -411,7 +413,7 @@ export const RecitationProvider = ({ children }) => {
                 surahDataItem?.verses?.[0]?.verseId;
               surahFlag.current = true;
               surahNameArrayFlag.current = true;
-              
+
               break;
             }
             // Set states for the found surah
@@ -489,14 +491,14 @@ export const RecitationProvider = ({ children }) => {
                   console.log(
                     "⚠️ Silence detected for 6.5 seconds during recitation - stopping"
                   );
-                if (recognitionRef.current) {
-                  isListeningRef.current = false;
-                  interruptFlagRef.current = true;
-                  autoReciteInProgressRef.current = false;
-                  currentSurahData.current = null;
-                }
-              }, RECITATION_SILENCE_TIMEOUT);
-            }
+                  if (recognitionRef.current) {
+                    isListeningRef.current = false;
+                    interruptFlagRef.current = true;
+                    autoReciteInProgressRef.current = false;
+                    currentSurahData.current = null;
+                  }
+                }, RECITATION_SILENCE_TIMEOUT);
+              }
 
               // Get current rolling window verses
               const currentWindow = rollingWindowRef.current;
@@ -686,6 +688,7 @@ export const RecitationProvider = ({ children }) => {
   const jumpToVerse = (surahNum, verseNum) => {
     if (!quranDataRef.current) return;
     
+
     // Validate surah number
     if (surahNum < 1 || surahNum > 114) {
       console.error("Invalid surah number");
@@ -702,7 +705,7 @@ export const RecitationProvider = ({ children }) => {
       console.error("Invalid verse number for this surah");
       return;
     }
-
+    resetter();
     // // Find the specific verse
     const verse = surah.verses.find(v => v.verseId === verseNum);
     console.log("verse data", verse);
@@ -715,11 +718,11 @@ export const RecitationProvider = ({ children }) => {
     lastAyahIdRef.current = verseNum - 1;
     currentVerseIndexRef.current = verseNum - 1;
     autoReciteInProgressRef.current = true;
-    
+
     // Reset any existing state
-    setPreviousAyaList([]);
-    setTranslations([]);
     
+    
+
     // Start from the selected verse
     const verseData = {
       surahId: surahNum,
@@ -727,6 +730,9 @@ export const RecitationProvider = ({ children }) => {
       text: verse.text,
       translation: verse.translation
     };
+    // Add the verse to the display list and speak its translation
+    
+    // doSpeakTranslation(verse.translation);
   };
 
   // --------------- 9) Provide all states & methods ---------------
