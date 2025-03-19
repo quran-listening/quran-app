@@ -10,6 +10,7 @@ import {
   selectClasses,
   Typography,
   Checkbox,
+  Input,
 } from "@mui/joy";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import { Link, useNavigate } from "react-router-dom";
@@ -68,6 +69,7 @@ const RecitationContainer = () => {
     handleMute,
     autorecitationCheckRef,
     isLoading,
+    jumpToVerse,
   } = useContext(RecitationContext);
 
   const {
@@ -98,6 +100,9 @@ const RecitationContainer = () => {
   const [surahData, setSurahData] = useState(currentSurahData);
 
   const [autoRecitation, setAutoRecitation] = useState(true);
+  // Add these state declarations near other useState declarations
+  const [surahNumber, setSurahNumber] = useState("");
+  const [verseNumber, setVerseNumber] = useState("");
 
   const navigate = useNavigate();
 
@@ -165,7 +170,7 @@ const RecitationContainer = () => {
   useEffect(() => {
     if (checkdCheckBox) {
       setTtsRateState(ttsRate.current);
-    }else{
+    } else {
       setTtsRateState(1.0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -174,7 +179,7 @@ const RecitationContainer = () => {
   useEffect(() => {
     if (checkdCheckBox) {
       setTtsRateState(1.0);
-    }else{
+    } else {
       setTtsRateState(1.0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -240,6 +245,13 @@ const RecitationContainer = () => {
     const newRate = Math.max(0.7, Math.min(1.5, ttsRateState + change));
     setTtsRateState(newRate);
     // ttsRate.current = newRate;
+  };
+
+  // Add this handler function
+  const handleJumpToVerse = () => {
+    if (surahNumber && verseNumber) {
+      jumpToVerse(parseInt(surahNumber), parseInt(verseNumber));
+    }
   };
 
   // Render
@@ -353,8 +365,11 @@ const RecitationContainer = () => {
                       justifyContent: "space-between",
                       alignItems: "center",
                       my: 1,
+                      flexWrap: "wrap",
+                      gap: "5px"
                     }}
                   >
+
                     <Box
                       sx={{
                         fontSize: "18px",
@@ -370,8 +385,7 @@ const RecitationContainer = () => {
                         <LiveMicVisualizer />
                       </Box>
                     </Box>
-
-                    <ClickAwayListener onClickAway={handleTooltipClose}>
+                    {viewWidth <= 800 && <ClickAwayListener onClickAway={handleTooltipClose}>
                       <div>
                         <Tooltip
                           PopperProps={{
@@ -405,7 +419,76 @@ const RecitationContainer = () => {
                           </Box>
                         </Tooltip>
                       </div>
-                    </ClickAwayListener>
+                    </ClickAwayListener>}
+                    {viewWidth < 800 && <Box sx={{width:"100%"}}>
+                      <Typography sx={{ color: "#fff", fontSize: "15px",marginRight:"10px" }}>Starts From</Typography></Box>}
+                    <Box sx={{ display: "flex", alignItems: viewWidth<800?"flex-start":"center", justifyContent: viewWidth<600?"flex-start":"center",flexWrap:"wrap",gap:"5px" }}>
+                      {viewWidth>800 && <Typography sx={{ color: "#fff", fontSize: "15px",marginRight:"10px" }}>Starts From</Typography>}
+                      <Input
+                        style={{ width: viewWidth<800?"100%":"150px" }}
+                        placeholder="surah number"
+                        type="number"
+                        value={surahNumber}
+                        onChange={(e) => setSurahNumber(e.target.value)}
+                        sx={{ marginRight: 1 }}
+                      />
+                      <Input
+                        style={{ width: viewWidth<600?"100%": "150px" }}
+                        placeholder="verse number"
+                        type="number"
+                        value={verseNumber}
+                        onChange={(e) => setVerseNumber(e.target.value)}
+                        sx={{ marginRight: 1 }}
+                      />
+                      <Button
+                        onClick={handleJumpToVerse}
+                        sx={{
+                          backgroundColor: "#2C5741",
+                          color: "#fff",
+                          "&:hover": {
+                            backgroundColor: "#234432",
+                          },
+                          width: viewWidth<800?"100%": "150px"
+                        }}
+                      >
+                        Go
+                      </Button>
+                    </Box>
+                    {viewWidth > 800 && <ClickAwayListener onClickAway={handleTooltipClose}>
+                      <div>
+                        <Tooltip
+                          PopperProps={{
+                            disablePortal: true,
+                          }}
+                          onClose={handleTooltipClose}
+                          open={tooltipOpen && language === "urdu"}
+                          disableFocusListener
+                          disableHoverListener
+                          disableTouchListener
+                          title="Coming Soon"
+                          placement="top" // Add this line to show tooltip on top
+                          arrow // Add this to show an arrow pointing to the element
+                        >
+                          <Box
+                            onClick={handleMuteChange}
+                            style={{
+                              display: "flex",
+                              justifyContent: "flex-end",
+                              alignItems: "flex-end",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <img
+                              id="muteIcon"
+                              src={isMuted ? muteIcon : unmuteIcon}
+                              alt={isMuted ? "Unmute" : "Mute"}
+                              width={25}
+                              height={25}
+                            />
+                          </Box>
+                        </Tooltip>
+                      </div>
+                    </ClickAwayListener>}
 
                   </Box>
 
@@ -540,7 +623,7 @@ const RecitationContainer = () => {
                 </Grid>
 
                 <Grid item xs={12} sm={12} md={6} lg={4}>
-                <Box sx={{ display:viewWidth <= 900 ? 'flex' : 'none', alignItems: 'center', mr: 2,justifyContent: 'flex-end' }}>
+                  <Box sx={{ display: viewWidth <= 900 ? 'flex' : 'none', alignItems: 'center', mr: 2, justifyContent: 'flex-end' }}>
                     <Checkbox
                       sx={{
                         color: "#fff",
@@ -551,7 +634,7 @@ const RecitationContainer = () => {
                       checked={autoRecitation}
                       onChange={(e) => setAutoRecitation(e.target.checked)}
                     />
-                    <Typography sx={{ color: "#fff", marginLeft: "5px",fontSize: "15px" }}>
+                    <Typography sx={{ color: "#fff", marginLeft: "5px", fontSize: "15px" }}>
                       Auto Recitation until "اللّٰهُ أَكْبَرْ"
                     </Typography>
                   </Box>
@@ -705,45 +788,45 @@ const RecitationContainer = () => {
                       sx={{
                         color: "#fff",
                         "&.Mui-checked": {
-                          color: "#fff", 
+                          color: "#fff",
                         },
                       }}
                       checked={checkdCheckBox}
                       onChange={handleCheckBoxChange}
                       inputProps={{ "aria-label": "controlled" }}
                     />
-                    <Typography sx={{ color: "#fff", marginLeft: "5px",fontSize: "14px" }}>
+                    <Typography sx={{ color: "#fff", marginLeft: "5px", fontSize: "14px" }}>
                       Auto
                     </Typography>
                   </Box>
                   <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    alignItems: "center",
-                    color: "#fff",
-                    mt: 1,
-                  }}
-                >
-                  <Box sx={{ display:viewWidth > 900 ? 'flex' : 'none', alignItems: 'center', mr: 2,justifyContent: 'flex-end' }}>
-                    <Checkbox
-                      sx={{
-                        color: "#fff",
-                        "&.Mui-checked": {
+                    sx={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      alignItems: "center",
+                      color: "#fff",
+                      mt: 1,
+                    }}
+                  >
+                    <Box sx={{ display: viewWidth > 900 ? 'flex' : 'none', alignItems: 'center', mr: 2, justifyContent: 'flex-end' }}>
+                      <Checkbox
+                        sx={{
                           color: "#fff",
-                        },
-                      }}
-                      checked={autoRecitation}
-                      onChange={(e) => setAutoRecitation(e.target.checked)}
-                    />
-                    <Typography sx={{ color: "#fff", marginLeft: "5px" }}>
-                      Auto Recitation until "اللّٰهُ أَكْبَرْ"
+                          "&.Mui-checked": {
+                            color: "#fff",
+                          },
+                        }}
+                        checked={autoRecitation}
+                        onChange={(e) => setAutoRecitation(e.target.checked)}
+                      />
+                      <Typography sx={{ color: "#fff", marginLeft: "5px" }}>
+                        Auto Recitation until "اللّٰهُ أَكْبَرْ"
+                      </Typography>
+                    </Box>
+                    <Typography sx={{ color: "#fff" }}>
+                      Time: {formatTime(elapsedTime)}
                     </Typography>
                   </Box>
-                  <Typography sx={{ color: "#fff" }}>
-                    Time: {formatTime(elapsedTime)}
-                  </Typography>
-                </Box>
                 </Grid>
               </Grid>
 

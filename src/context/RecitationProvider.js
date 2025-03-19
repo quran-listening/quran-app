@@ -682,6 +682,53 @@ export const RecitationProvider = ({ children }) => {
     autorecitationCheckRef
   });
 
+  // Add this function inside RecitationProvider
+  const jumpToVerse = (surahNum, verseNum) => {
+    if (!quranDataRef.current) return;
+    
+    // Validate surah number
+    if (surahNum < 1 || surahNum > 114) {
+      console.error("Invalid surah number");
+      return;
+    }
+
+    // Get the surah
+    const surah = quranDataRef.current[surahNum - 1];
+    console.log("surah data", surah);
+    if (!surah) return;
+
+    // Validate verse number
+    if (verseNum < 1 || verseNum > surah?.verses?.length) {
+      console.error("Invalid verse number for this surah");
+      return;
+    }
+
+    // // Find the specific verse
+    const verse = surah.verses.find(v => v.verseId === verseNum);
+    console.log("verse data", verse);
+    if (!verse) return;
+
+    // // Set up the context for auto-recitation
+    currentSurahData.current = surah;
+    surahFlag.current = true;
+    surahId.current = surahNum;
+    lastAyahIdRef.current = verseNum - 1;
+    currentVerseIndexRef.current = verseNum - 1;
+    autoReciteInProgressRef.current = true;
+    
+    // Reset any existing state
+    setPreviousAyaList([]);
+    setTranslations([]);
+    
+    // Start from the selected verse
+    const verseData = {
+      surahId: surahNum,
+      verseId: verseNum,
+      text: verse.text,
+      translation: verse.translation
+    };
+  };
+
   // --------------- 9) Provide all states & methods ---------------
   const providerValue = {
     // States
@@ -728,6 +775,7 @@ export const RecitationProvider = ({ children }) => {
     resetter,
     doSpeakTranslation, // if you need to speak a custom text anytime
     isLoading,
+    jumpToVerse,
   };
 
   return (
