@@ -45,7 +45,6 @@ import FeedbackForm from "./FeedbackForm";
 import { ClickAwayListener, Tooltip } from "@mui/material";
 import { languagesData } from "../utils/constant.js";
 
-
 const RecitationContainer = () => {
   const {
     // States
@@ -109,7 +108,6 @@ const RecitationContainer = () => {
   // Add these new state variables near other useState declarations
   const [surahError, setSurahError] = useState("");
   const [verseError, setVerseError] = useState("");
-
 
   const navigate = useNavigate();
 
@@ -269,7 +267,7 @@ const RecitationContainer = () => {
       setSurahError("");
     }
 
-    const total_verses = quranDataRef.current[surahNumber - 1].verses.length;
+    const total_verses = quranDataRef.current[surahNumber - 1]?.verses.length;
 
     // Validate verse number (positive number)
     if (!verseNumber) {
@@ -416,9 +414,10 @@ const RecitationContainer = () => {
                       alignItems: "center",
                       my: 1,
                       flexWrap: "wrap",
-                      gap: "5px",
+                      gap: "5px"
                     }}
                   >
+
                     <Box
                       sx={{
                         fontSize: "18px",
@@ -434,77 +433,45 @@ const RecitationContainer = () => {
                         <LiveMicVisualizer />
                       </Box>
                     </Box>
-                    {viewWidth <= 800 && (
-                      <ClickAwayListener onClickAway={handleTooltipClose}>
-                        <div>
-                          <Tooltip
-                            PopperProps={{
-                              disablePortal: true,
+                    {viewWidth <= 800 && <ClickAwayListener onClickAway={handleTooltipClose}>
+                      <div>
+                        <Tooltip
+                          PopperProps={{
+                            disablePortal: true,
+                          }}
+                          onClose={handleTooltipClose}
+                          open={tooltipOpen && language === "urdu"}
+                          disableFocusListener
+                          disableHoverListener
+                          disableTouchListener
+                          title="Coming Soon"
+                          placement="top" // Add this line to show tooltip on top
+                          arrow // Add this to show an arrow pointing to the element
+                        >
+                          <Box
+                            onClick={handleMuteChange}
+                            style={{
+                              display: "flex",
+                              justifyContent: "flex-end",
+                              alignItems: "flex-end",
+                              cursor: "pointer",
                             }}
-                            onClose={handleTooltipClose}
-                            open={tooltipOpen && language === "urdu"}
-                            disableFocusListener
-                            disableHoverListener
-                            disableTouchListener
-                            title="Coming Soon"
-                            placement="top" // Add this line to show tooltip on top
-                            arrow // Add this to show an arrow pointing to the element
                           >
-                            <Box
-                              onClick={handleMuteChange}
-                              style={{
-                                display: "flex",
-                                justifyContent: "flex-end",
-                                alignItems: "flex-end",
-                                cursor: "pointer",
-                              }}
-                            >
-                              <img
-                                id="muteIcon"
-                                src={isMuted ? muteIcon : unmuteIcon}
-                                alt={isMuted ? "Unmute" : "Mute"}
-                                width={25}
-                                height={25}
-                              />
-                            </Box>
-                          </Tooltip>
-                        </div>
-                      </ClickAwayListener>
-                    )}
-                    {viewWidth < 800 && (
-                      <Box sx={{ width: "100%" }}>
-                        <Typography
-                          sx={{
-                            color: "#fff",
-                            fontSize: "15px",
-                            marginRight: "10px",
-                          }}
-                        >
-                          Starts From
-                        </Typography>
-                      </Box>
-                    )}
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: viewWidth < 800 ? "flex-start" : "center",
-                        justifyContent:
-                          viewWidth < 600 ? "flex-start" : "center",
-                        flexWrap: "wrap",
-                        gap: "5px",
-                      }}
-                    >
-                      {viewWidth > 800 && (
-                        <Typography
-                          sx={{
-                            color: "#fff",
-                            fontSize: "15px",
-                            marginRight: "10px",
-                          }}
-                        >
-                          Starts From
-                        </Typography>
-                      )}
+                            <img
+                              id="muteIcon"
+                              src={isMuted ? muteIcon : unmuteIcon}
+                              alt={isMuted ? "Unmute" : "Mute"}
+                              width={25}
+                              height={25}
+                            />
+                          </Box>
+                        </Tooltip>
+                      </div>
+                    </ClickAwayListener>}
+
+                    {viewWidth > 800 && <Box sx={{ display: "flex", alignItems: viewWidth < 800 ? "flex-start" : "center", justifyContent: viewWidth < 600 ? "flex-start" : "center", flexWrap: "wrap", gap: "5px" }}>
+                      <Typography sx={{ color: "#fff", fontSize: "15px", marginRight: "10px" }}>Start Recitation from:</Typography>
+                      <Box>
                       <Input
                         style={{ width: viewWidth < 800 ? "100%" : "150px" }}
                         placeholder="surah number"
@@ -513,51 +480,76 @@ const RecitationContainer = () => {
                         onChange={handleSurahChange}
                         sx={{
                           marginRight: 1,
-                          "&.Mui-error": {
-                            borderColor: "#f44336",
+                          '&.Mui-error': {
+                            borderColor: '#f44336',
                           },
                           ...(surahError && {
-                            borderColor: "#f44336",
-                            backgroundColor: "rgba(244, 67, 54, 0.1)",
-                          }),
+                            borderColor: '#f44336',
+                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                          })
                         }}
                         error={!!surahError}
-                        helperText={surahError}
                       />
+                      {surahError && (
+                        <Typography
+                          sx={{
+                            color: '#f44336',
+                            fontSize: '0.75rem',
+                            ml: 1
+                          }}
+                        >
+                          {surahError}
+                        </Typography>
+                      )}
+                      </Box>  
+                      <Box>
                       <Input
-                        style={{ width: viewWidth < 600 ? "100%" : "150px" }}
+                        style={{ width: viewWidth < 800 ? "100%" : "150px" }}
                         placeholder="verse number"
                         type="number"
                         value={verseNumber}
                         onChange={handleVerseChange}
                         sx={{
                           marginRight: 1,
-                          "&.Mui-error": {
-                            borderColor: "#f44336",
+                          '&.Mui-error': {
+                            borderColor: '#f44336',
                           },
                           ...(verseError && {
-                            borderColor: "#f44336 !important",
-                            backgroundColor: "rgba(244, 67, 54, 0.1)",
-                            "& input": {
-                              color: "#f44336",
-                            },
-                          }),
+                            borderColor: '#f44336 !important',
+                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                            '& input': {
+                              color: '#f44336',
+                            }
+                          })
                         }}
                         error={!!verseError}
                         slotProps={{
                           input: {
                             sx: {
-                              "--Input-decoratorChildHeight": "45px",
+                              '--Input-decoratorChildHeight': '45px',
                             },
                           },
                           helperText: {
                             sx: {
-                              color: "#f44336",
-                              mt: 0.5,
+                              color: '#f44336',
                             },
                           },
                         }}
                       />
+                      <Box>
+                      {verseError && (
+                        <Typography
+                          sx={{
+                            color: '#f44336',
+                            fontSize: '0.75rem',
+                            ml: 1
+                          }}
+                        >
+                          {verseError}
+                        </Typography>
+                      )}
+                      </Box>
+                      </Box>
                       <Button
                         onClick={handleJumpToVerse}
                         sx={{
@@ -566,49 +558,49 @@ const RecitationContainer = () => {
                           "&:hover": {
                             backgroundColor: "#234432",
                           },
-                          width: viewWidth < 800 ? "100%" : "150px",
+                          width: viewWidth < 800 ? "100%" : "150px"
                         }}
                       >
                         Go
                       </Button>
                     </Box>
-                    {viewWidth > 800 && (
-                      <ClickAwayListener onClickAway={handleTooltipClose}>
-                        <div>
-                          <Tooltip
-                            PopperProps={{
-                              disablePortal: true,
+                    }
+                    {viewWidth > 800 && <ClickAwayListener onClickAway={handleTooltipClose}>
+                      <div>
+                        <Tooltip
+                          PopperProps={{
+                            disablePortal: true,
+                          }}
+                          onClose={handleTooltipClose}
+                          open={tooltipOpen && language === "urdu"}
+                          disableFocusListener
+                          disableHoverListener
+                          disableTouchListener
+                          title="Coming Soon"
+                          placement="top" // Add this line to show tooltip on top
+                          arrow // Add this to show an arrow pointing to the element
+                        >
+                          <Box
+                            onClick={handleMuteChange}
+                            style={{
+                              display: "flex",
+                              justifyContent: "flex-end",
+                              alignItems: "flex-end",
+                              cursor: "pointer",
                             }}
-                            onClose={handleTooltipClose}
-                            open={tooltipOpen && language === "urdu"}
-                            disableFocusListener
-                            disableHoverListener
-                            disableTouchListener
-                            title="Coming Soon"
-                            placement="top" // Add this line to show tooltip on top
-                            arrow // Add this to show an arrow pointing to the element
                           >
-                            <Box
-                              onClick={handleMuteChange}
-                              style={{
-                                display: "flex",
-                                justifyContent: "flex-end",
-                                alignItems: "flex-end",
-                                cursor: "pointer",
-                              }}
-                            >
-                              <img
-                                id="muteIcon"
-                                src={isMuted ? muteIcon : unmuteIcon}
-                                alt={isMuted ? "Unmute" : "Mute"}
-                                width={25}
-                                height={25}
-                              />
-                            </Box>
-                          </Tooltip>
-                        </div>
-                      </ClickAwayListener>
-                    )}
+                            <img
+                              id="muteIcon"
+                              src={isMuted ? muteIcon : unmuteIcon}
+                              alt={isMuted ? "Unmute" : "Mute"}
+                              width={25}
+                              height={25}
+                            />
+                          </Box>
+                        </Tooltip>
+                      </div>
+                    </ClickAwayListener>}
+
                   </Box>
 
                   <Box
@@ -665,6 +657,7 @@ const RecitationContainer = () => {
                       </Box>
                     )}
                     <Box>
+
                       {previousAyaList?.length > 0 ? (
                         previousAyaList?.map(
                           (
@@ -741,14 +734,7 @@ const RecitationContainer = () => {
                 </Grid>
 
                 <Grid item xs={12} sm={12} md={6} lg={4}>
-                  <Box
-                    sx={{
-                      display: viewWidth <= 900 ? "flex" : "none",
-                      alignItems: "center",
-                      mr: 2,
-                      justifyContent: "flex-end",
-                    }}
-                  >
+                  <Box sx={{ display: viewWidth <= 900 ? 'flex' : 'none', alignItems: 'center', mr: 2, justifyContent: 'flex-end' }}>
                     <Checkbox
                       sx={{
                         color: "#fff",
@@ -759,13 +745,7 @@ const RecitationContainer = () => {
                       checked={autoRecitation}
                       onChange={(e) => setAutoRecitation(e.target.checked)}
                     />
-                    <Typography
-                      sx={{
-                        color: "#fff",
-                        marginLeft: "5px",
-                        fontSize: "15px",
-                      }}
-                    >
+                    <Typography sx={{ color: "#fff", marginLeft: "5px", fontSize: "15px" }}>
                       Auto Recitation until "اللّٰهُ أَكْبَرْ"
                     </Typography>
                   </Box>
@@ -876,9 +856,7 @@ const RecitationContainer = () => {
                   >
                     <Box mr={1} sx={{ color: "#fff", display: "flex" }}>
                       {" "}
-                      <Typography sx={{ color: "#fff", fontSize: "15px" }}>
-                        Translation Speed ={" "}
-                      </Typography>
+                      <Typography sx={{ color: "#fff", fontSize: "15px" }}>Translation Speed ={" "}</Typography>
                       {!checkdCheckBox && (
                         <Box
                           sx={{
@@ -928,13 +906,7 @@ const RecitationContainer = () => {
                       onChange={handleCheckBoxChange}
                       inputProps={{ "aria-label": "controlled" }}
                     />
-                    <Typography
-                      sx={{
-                        color: "#fff",
-                        marginLeft: "5px",
-                        fontSize: "14px",
-                      }}
-                    >
+                    <Typography sx={{ color: "#fff", marginLeft: "5px", fontSize: "14px" }}>
                       Auto
                     </Typography>
                   </Box>
@@ -947,14 +919,7 @@ const RecitationContainer = () => {
                       mt: 1,
                     }}
                   >
-                    <Box
-                      sx={{
-                        display: viewWidth > 900 ? "flex" : "none",
-                        alignItems: "center",
-                        mr: 2,
-                        justifyContent: "flex-end",
-                      }}
-                    >
+                    <Box sx={{ display: viewWidth > 900 ? 'flex' : 'none', alignItems: 'center', mr: 2, justifyContent: 'flex-end' }}>
                       <Checkbox
                         sx={{
                           color: "#fff",
@@ -973,6 +938,107 @@ const RecitationContainer = () => {
                       Time: {formatTime(elapsedTime)}
                     </Typography>
                   </Box>
+                  {viewWidth < 800 && <Box>
+                    <Typography sx={{ color: "#fff", fontSize: "15px", marginRight: "10px",marginBottom:"5px" }}>Start Recitation from:</Typography>
+                    <Box sx={{marginBottom:"10px"}}>
+                      <Input
+                        style={{ width: viewWidth < 800 ? "100%" : "150px", marginBottom: "10px" }}
+                        placeholder="surah number"
+                        type="number"
+                        value={surahNumber}
+                        onChange={handleSurahChange}
+                        sx={{
+                          marginRight: 1,
+                          '&.Mui-error': {
+                            borderColor: '#f44336',
+                          },
+                          ...(surahError && {
+                            borderColor: '#f44336',
+                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                          })
+                        }}
+                        error={!!surahError}
+                      />
+                      <Box>
+                      {surahError && (
+                        <Typography
+                          sx={{
+                            color: '#f44336',
+                            fontSize: '0.75rem',
+                            ml: 1,
+                            marginTop: "-7px",
+                            marginBottom: "10px"
+                          }}
+                        >
+                          {surahError}
+                        </Typography>
+                      )}
+                      </Box>
+                    </Box>
+                    <Box sx={{marginBottom:"10px"}}>
+                      <Input
+                        style={{ width: viewWidth < 800 ? "100%" : "150px",  }}
+                        placeholder="verse number"
+                        type="number"
+                        value={verseNumber}
+                        onChange={handleVerseChange}
+                        sx={{
+                          marginRight: 1,
+                          '&.Mui-error': {
+                            borderColor: '#f44336',
+                          },
+                          ...(verseError && {
+                            borderColor: '#f44336 !important',
+                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                            '& input': {
+                              color: '#f44336',
+                            }
+                          })
+                        }}
+                        error={!!verseError}
+                        slotProps={{
+                          input: {
+                            sx: {
+                              '--Input-decoratorChildHeight': '45px',
+                            },
+                          },
+                          helperText: {
+                            sx: {
+                              color: '#f44336',
+                            },
+                          },
+                        }}
+                      />
+                      <Box>
+                      {verseError && (
+                        <Typography
+                          sx={{
+                            color: '#f44336',
+                            fontSize: '0.75rem',
+                            ml: 1,
+                            marginBottom: "10px"
+                          }}
+                        >
+                          {verseError}
+                        </Typography>
+                      )}
+                      </Box>
+                    </Box>
+                    <Button
+                      onClick={handleJumpToVerse}
+                      sx={{
+                        backgroundColor: "#2C5741",
+                        color: "#fff",
+                        "&:hover": {
+                          backgroundColor: "#234432",
+                        },
+                        width: viewWidth < 800 ? "100%" : "150px"
+                      }}
+                    >
+                      Go
+                    </Button>
+                  </Box>
+                  }
                 </Grid>
               </Grid>
 
