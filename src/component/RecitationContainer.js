@@ -105,9 +105,9 @@ const RecitationContainer = () => {
   // Add these state declarations near other useState declarations
   const [surahNumber, setSurahNumber] = useState("");
   const [verseNumber, setVerseNumber] = useState("");
-   // Add these new state variables near other useState declarations
-   const [surahError, setSurahError] = useState("");
-   const [verseError, setVerseError] = useState("");
+  // Add these new state variables near other useState declarations
+  const [surahError, setSurahError] = useState("");
+  const [verseError, setVerseError] = useState("");
 
   const navigate = useNavigate();
 
@@ -255,7 +255,7 @@ const RecitationContainer = () => {
   // Add this validation function
   const validateInputs = () => {
     let isValid = true;
-    
+
     // Validate surah number (1-114)
     if (!surahNumber) {
       setSurahError("Surah number is required");
@@ -267,7 +267,7 @@ const RecitationContainer = () => {
       setSurahError("");
     }
 
-    const total_verses = quranDataRef.current[surahNumber - 1].verses.length;
+    const total_verses = quranDataRef.current[surahNumber - 1]?.verses.length;
 
     // Validate verse number (positive number)
     if (!verseNumber) {
@@ -468,17 +468,17 @@ const RecitationContainer = () => {
                         </Tooltip>
                       </div>
                     </ClickAwayListener>}
-                    {viewWidth < 800 && <Box sx={{width:"100%"}}>
-                      <Typography sx={{ color: "#fff", fontSize: "15px",marginRight:"10px" }}>Starts From</Typography></Box>}
-                    <Box sx={{ display: "flex", alignItems: viewWidth<800?"flex-start":"center", justifyContent: viewWidth<600?"flex-start":"center",flexWrap:"wrap",gap:"5px" }}>
-                      {viewWidth>800 && <Typography sx={{ color: "#fff", fontSize: "15px",marginRight:"10px" }}>Starts From</Typography>}
+
+                    {viewWidth > 800 && <Box sx={{ display: "flex", alignItems: viewWidth < 800 ? "flex-start" : "center", justifyContent: viewWidth < 600 ? "flex-start" : "center", flexWrap: "wrap", gap: "5px" }}>
+                      <Typography sx={{ color: "#fff", fontSize: "15px", marginRight: "10px" }}>Start Recitation from:</Typography>
+                      <Box>
                       <Input
-                        style={{ width: viewWidth<800?"100%":"150px" }}
+                        style={{ width: viewWidth < 800 ? "100%" : "150px" }}
                         placeholder="surah number"
                         type="number"
                         value={surahNumber}
                         onChange={handleSurahChange}
-                        sx={{ 
+                        sx={{
                           marginRight: 1,
                           '&.Mui-error': {
                             borderColor: '#f44336',
@@ -489,15 +489,27 @@ const RecitationContainer = () => {
                           })
                         }}
                         error={!!surahError}
-                        helperText={surahError}
                       />
+                      {surahError && (
+                        <Typography
+                          sx={{
+                            color: '#f44336',
+                            fontSize: '0.75rem',
+                            ml: 1
+                          }}
+                        >
+                          {surahError}
+                        </Typography>
+                      )}
+                      </Box>  
+                      <Box>
                       <Input
-                        style={{ width: viewWidth<600?"100%": "150px" }}
+                        style={{ width: viewWidth < 800 ? "100%" : "150px" }}
                         placeholder="verse number"
                         type="number"
                         value={verseNumber}
                         onChange={handleVerseChange}
-                        sx={{ 
+                        sx={{
                           marginRight: 1,
                           '&.Mui-error': {
                             borderColor: '#f44336',
@@ -520,11 +532,24 @@ const RecitationContainer = () => {
                           helperText: {
                             sx: {
                               color: '#f44336',
-                              mt: 0.5,
                             },
                           },
                         }}
                       />
+                      <Box>
+                      {verseError && (
+                        <Typography
+                          sx={{
+                            color: '#f44336',
+                            fontSize: '0.75rem',
+                            ml: 1
+                          }}
+                        >
+                          {verseError}
+                        </Typography>
+                      )}
+                      </Box>
+                      </Box>
                       <Button
                         onClick={handleJumpToVerse}
                         sx={{
@@ -533,12 +558,13 @@ const RecitationContainer = () => {
                           "&:hover": {
                             backgroundColor: "#234432",
                           },
-                          width: viewWidth<800?"100%": "150px"
+                          width: viewWidth < 800 ? "100%" : "150px"
                         }}
                       >
                         Go
                       </Button>
                     </Box>
+                    }
                     {viewWidth > 800 && <ClickAwayListener onClickAway={handleTooltipClose}>
                       <div>
                         <Tooltip
@@ -912,6 +938,107 @@ const RecitationContainer = () => {
                       Time: {formatTime(elapsedTime)}
                     </Typography>
                   </Box>
+                  {viewWidth < 800 && <Box>
+                    <Typography sx={{ color: "#fff", fontSize: "15px", marginRight: "10px",marginBottom:"5px" }}>Start Recitation from:</Typography>
+                    <Box sx={{marginBottom:"10px"}}>
+                      <Input
+                        style={{ width: viewWidth < 800 ? "100%" : "150px", marginBottom: "10px" }}
+                        placeholder="surah number"
+                        type="number"
+                        value={surahNumber}
+                        onChange={handleSurahChange}
+                        sx={{
+                          marginRight: 1,
+                          '&.Mui-error': {
+                            borderColor: '#f44336',
+                          },
+                          ...(surahError && {
+                            borderColor: '#f44336',
+                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                          })
+                        }}
+                        error={!!surahError}
+                      />
+                      <Box>
+                      {surahError && (
+                        <Typography
+                          sx={{
+                            color: '#f44336',
+                            fontSize: '0.75rem',
+                            ml: 1,
+                            marginTop: "-7px",
+                            marginBottom: "10px"
+                          }}
+                        >
+                          {surahError}
+                        </Typography>
+                      )}
+                      </Box>
+                    </Box>
+                    <Box sx={{marginBottom:"10px"}}>
+                      <Input
+                        style={{ width: viewWidth < 800 ? "100%" : "150px",  }}
+                        placeholder="verse number"
+                        type="number"
+                        value={verseNumber}
+                        onChange={handleVerseChange}
+                        sx={{
+                          marginRight: 1,
+                          '&.Mui-error': {
+                            borderColor: '#f44336',
+                          },
+                          ...(verseError && {
+                            borderColor: '#f44336 !important',
+                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                            '& input': {
+                              color: '#f44336',
+                            }
+                          })
+                        }}
+                        error={!!verseError}
+                        slotProps={{
+                          input: {
+                            sx: {
+                              '--Input-decoratorChildHeight': '45px',
+                            },
+                          },
+                          helperText: {
+                            sx: {
+                              color: '#f44336',
+                            },
+                          },
+                        }}
+                      />
+                      <Box>
+                      {verseError && (
+                        <Typography
+                          sx={{
+                            color: '#f44336',
+                            fontSize: '0.75rem',
+                            ml: 1,
+                            marginBottom: "10px"
+                          }}
+                        >
+                          {verseError}
+                        </Typography>
+                      )}
+                      </Box>
+                    </Box>
+                    <Button
+                      onClick={handleJumpToVerse}
+                      sx={{
+                        backgroundColor: "#2C5741",
+                        color: "#fff",
+                        "&:hover": {
+                          backgroundColor: "#234432",
+                        },
+                        width: viewWidth < 800 ? "100%" : "150px"
+                      }}
+                    >
+                      Go
+                    </Button>
+                  </Box>
+                  }
                 </Grid>
               </Grid>
 
