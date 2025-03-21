@@ -124,7 +124,6 @@ export const bismillahDetection = (transcript, speakTranslation, params) => {
   recognitionRef.current.stop();
 };
 
-
 /**
  * Speak out text (translation) using browser's SpeechSynthesis
  *
@@ -171,6 +170,16 @@ export function speakTranslation(text, { isMutedRef, ttsRate, language }) {
     console.log("Finished speaking");
   };
   utterance.onerror = (e) => console.error("Speech error:", e);
+  utterance.onboundary = (event) => {
+    if (event.name === "word") {
+      const charIndex = event.charIndex;
+      const beforeText = text.substring(0, charIndex);
+      const words = beforeText.trim().split(/\s+/);
+      const currentIndex = words.length;
+      console.log("currentIndex>>>", currentIndex)
+      // setCurrentWordIndex(currentIndex);
+    }
+  };
 
   synth.speak(utterance);
 }
