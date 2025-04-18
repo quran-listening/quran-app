@@ -1,0 +1,76 @@
+import { useState, useRef } from 'react';
+
+const useOpenAITranscription = ({
+  onTranscriptionResult,
+  quranDataRef,
+  whisperKey,
+  language = 'ar', // Default to Arabic
+}) => {
+  const [lines, setLines] = useState([]);   // [{ar,en}]
+  const [recording, setRecording] = useState(false);
+  const sessionId = useRef(null);
+  const mediaRec = useRef(null);
+
+  const genId = () =>
+    `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const flush = async () => {
+    if (!sessionId.current) return;
+    const r = await fetch("http://localhost:3001/flush", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-OPENAI-KEY": whisperKey || "",
+      },
+      body: JSON.stringify({ sessionId: sessionId.current })
+    });
+    if (!r.ok || r.status === 204 || r.status === 202) return;
+    const { delta } = await r.json();
+    if (!delta) return;
+
+    /* split on Arabic comma / stop marks if you like; here we push raw */
+    onTranscriptionResult?.(delta.trim());
+  };
+
+  const startRecognition = async () => {
+    sessionId.current = genId();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    mediaRec.current = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+    mediaRec.current.ondataavailable = async (e) => {
+      if (e.data.size === 0) return;
+      const fd = new FormData();
+      fd.append("chunk", e.data, "chunk.webm");
+      fd.append("sessionId", sessionId.current);
+      await fetch("http://localhost:3001/uploadChunk", { method: "POST", body: fd });
+    };
+    mediaRec.current.start(3000);        // 3‑s chunks
+
+    /* flush every 8 s */
+    flush.timer = setInterval(flush, 6000);
+    setRecording(true);
+  };
+
+  const stopRecognition = async () => {
+    mediaRec.current?.stop();
+    mediaRec.current?.stream.getTracks().forEach(t => t.stop());
+    clearInterval(flush.timer);
+    await flush();                       // final flush
+
+    await fetch("http://localhost:3001/endSession", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId: sessionId.current })
+    });
+    sessionId.current = null;
+    setRecording(false);
+  };
+
+  return {
+    recording,
+    startRecognition,
+    stopRecognition,
+  };
+};
+
+export default useOpenAITranscription;
