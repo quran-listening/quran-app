@@ -16,14 +16,16 @@ const useOpenAITranscription = ({
 
   const flush = async () => {
     if (!sessionId.current) return;
+    const apiKey =  localStorage.getItem("whisperKey") ||whisperKey || "";
     const r = await fetch("http://localhost:3001/flush", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-OPENAI-KEY": whisperKey || "",
+        "X-OPENAI-KEY": apiKey || "",
       },
       body: JSON.stringify({ sessionId: sessionId.current })
     });
+    console.log("body",JSON.stringify({ sessionId: sessionId.current }))
     if (!r.ok || r.status === 204 || r.status === 202) return;
     const { delta } = await r.json();
     if (!delta) return;

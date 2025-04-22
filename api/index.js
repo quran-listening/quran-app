@@ -14,6 +14,7 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 const port = 3001;
 
 const uploadsDir = path.join(process.cwd(), "uploads");
@@ -51,6 +52,7 @@ app.post("/uploadChunk", upload.single("chunk"), (req, res) => {
 
 /* ───────── /flush – incremental transcription ───────── */
 app.post("/flush", async (req, res) => {
+  console.log("body",req.body);
   const { sessionId } = req.body;
   const sess = sessions[sessionId];
   if (!sess) return res.status(204).end();
@@ -71,7 +73,9 @@ app.post("/flush", async (req, res) => {
     form.append("model", "whisper-1");
     form.append("language", "ar");
 
-    const apiKey = req.get("X-OPENAI-KEY") || process.env.OPENAI_API_KEY;
+    const apiKey = req.get("X-OPENAI-KEY");
+
+    console.log("api key:",apiKey)
 
     const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method : "POST",
