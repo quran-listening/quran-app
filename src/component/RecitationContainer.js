@@ -38,11 +38,13 @@ import {
   stopRecordingBtn,
 } from "../styles/VerseTranslationStyle.js";
 
+import MuiAlert from "@mui/material/Alert";
+
 // Hooks & components
 import useMicrophone from "../hooks/useMicrophones";
 import LiveMicVisualizer from "./LiveMicVisualizer";
 import FeedbackForm from "./FeedbackForm";
-import { ClickAwayListener, Tooltip } from "@mui/material";
+import { ClickAwayListener, Snackbar, Tooltip } from "@mui/material";
 import { languagesData } from "../utils/constant.js";
 
 const RecitationContainer = () => {
@@ -97,10 +99,14 @@ const RecitationContainer = () => {
   const [showStartText, setShowStartText] = useState(true);
 
   const [arabicRecognizedText, setArabicRecognizedText] = useState("");
-  
+
   const [whisperKey, setWhisperKey] = useState(() =>
     localStorage.getItem("whisperKey") || ""
   );
+  const [loading, setLoading] = useState(false); // For API call loading state
+  const [apiResponse, setApiResponse] = useState({}); // For API call loading state
+  const [snackbarOpen, setSnackbarOpen] = useState(false); // For Snackbar visibility
+  const [snackbarMessage, setSnackbarMessage] = useState(""); // For Snackbar message
   const [isMuted, setIsMuted] = useState(true);
   // Add timer state near other state declarations
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -311,42 +317,119 @@ const RecitationContainer = () => {
 
 
   // handler
-const handleSpeechEngineChange = (event, value) => {
-  const newVal = value ?? event?.target?.value;   // works for Joy Select or <select>
+  // const handleSpeechEngineChange = (event, value) => {
+  //   const newVal = value ?? event?.target?.value;   // works for Joy Select or <select>
+  //   if (!newVal) return;                 // safety
+  //   if (isListeningRef.current) return;  // don’t switch mid‑recording
 
-  if (!newVal) return;                 // safety
-  if (isListeningRef.current) return;  // don’t switch mid‑recording
+  //   setSpeechEngine(newVal);
 
-  setSpeechEngine(newVal);
+  //   if (newVal === "whisper") {
+  //     let key = localStorage.getItem("whisperKey");
+  //     if (!key) {
+  //       key = prompt("Enter your personal OpenAI API key")?.trim();
+  //       console.log("new Val:",key)
+  //       if (!key) return setSpeechEngine("browser");   // user cancelled
+  //       localStorage.setItem("whisperKey", key);
+  //     }
+  //     setWhisperKey(key);
+  //   }
+  // };
 
-  if (newVal === "whisper") {
-    let key = localStorage.getItem("whisperKey");
-    if (!key) {
-      key = prompt("Enter your personal OpenAI API key")?.trim();
-      if (!key) return setSpeechEngine("browser");   // user cancelled
-      localStorage.setItem("whisperKey", key);
+
+  // Handle speech engine change
+  const handleSpeechEngineChange = (event, value) => {
+    const newVal = value ?? event?.target?.value;
+    if (!newVal) return;
+    if (isListeningRef.current) return;
+
+    setSpeechEngine(newVal);
+
+    if (newVal === "whisper") {
+      let key = localStorage.getItem("whisperKey");
+      if (!key) {
+        key = prompt("Enter your personal OpenAI API key")?.trim();
+        if (!key) return setSpeechEngine("browser");
+
+        localStorage.setItem("whisperKey", key);
+      }
+      setWhisperKey(key);
+
+      checkApiKeyValidity(key);
     }
-    setWhisperKey(key);
-  }
-};
+  };
 
+  // Check API key validity
+  // Update API key validation function
+  const checkApiKeyValidity = async (key) => {
+    setLoading(true); // Show loader
+    try {
+      const response = await fetch("https://api.openai.com/v1/models", {
+        headers: {
+          "Authorization": `Bearer ${key}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || "Invalid API key");
+      }
+
+      // If valid, just close loading
+      setLoading(false);
+    } catch (error) {
+      // Handle invalid key or network errors
+      console.error("API key validation failed:", error);
+      setSnackbarMessage(error.message || "Invalid API key. Please check your key and try again.");
+      setSnackbarOpen(true);
+
+      // Clear invalid key and reset engine
+      localStorage.removeItem("whisperKey");
+      setSpeechEngine("browser");
+    } finally {
+      setLoading(false); // Ensure loading is always stopped
+    }
+  };
+
+  // Snackbar close handler
+  const handleCloseSnackbar = () => {
+    setSnackbarOpen(false);
+  };
 
   // Render
   return (
     <Box sx={backgroundBg}>
-      {isLoading ? (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            minHeight: "100vh",
-          }}
-        >
-          <CircularProgress />
-        </Box>
+      {isLoading || loading ? (
+        <>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "100vh",
+            }}
+          >
+            <CircularProgress />
+          </Box>
+        </>
       ) : (
         <Box sx={contentWrapper}>
+          {/* Snackbar for displaying errors */}
+          <Snackbar
+            open={snackbarOpen}
+            autoHideDuration={6000}
+            onClose={handleCloseSnackbar}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          >
+            <MuiAlert
+              elevation={6}
+              variant="filled"
+              onClose={handleCloseSnackbar}
+              severity="error"
+            >
+              {snackbarMessage}
+            </MuiAlert>
+          </Snackbar>
           {!flag && (
             <Box>
               <Box

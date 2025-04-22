@@ -113,7 +113,7 @@ export const RecitationProvider = ({ children }) => {
   const [totalPausedTime, setTotalPausedTime] = useState(0);
   const [totalArabicWords, setTotalArabicWords] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentChunkStart] = useState(0);
+  
 
   // Control flags
   const [flag, setFlag] = useState(false); // "live" mode UI
@@ -200,12 +200,6 @@ export const RecitationProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem("speechEngine", speechEngine);
   }, [speechEngine]);
-
-
-
- 
-
-
 
   // --------------- 2) Adjust TTS Speed ---------------
   const adjustTtsSpeed = (wordsCount, elapsedTimeMs) => {
@@ -401,7 +395,8 @@ export const RecitationProvider = ({ children }) => {
                 bismillahFoundRef.current = true;
                 const bismillahTranscript =
                   "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ";
-                bismillahDetection(bismillahTranscript, doSpeakTranslation, {
+                  const normalizedBismillah = normalizeArabicText(bismillahTranscript);
+                bismillahDetection(normalizedBismillah, doSpeakTranslation, {
                   translationsArray,
                   lastAyahIdRef,
                   translationRecognizedTextRef,
@@ -414,7 +409,7 @@ export const RecitationProvider = ({ children }) => {
                   recognitionRef,
                 });
                 wordQueue = [];
-                recognitionRef.current.stop();
+                resetter();
                 return;
               }
             } else {
@@ -686,17 +681,23 @@ export const RecitationProvider = ({ children }) => {
     }
   };
 
-  const stopListening = () => {
+  const stopListening = async() => {
     console.log("stop Recognition called", stopRecognition())
     if (noTranscriptTimeoutRef.current) {
       clearTimeout(noTranscriptTimeoutRef.current);
       noTranscriptTimeoutRef.current = null;
     }
-    stopRecognition();
+    
     isListeningRef.current = false;
     setFlag(false);
-    window.speechSynthesis.cancel();
-    window.location.reload();
+    if (speechEngine === "whisper") {
+      await stopRecognition();
+      window.speechSynthesis.cancel();
+      window.location.reload();
+    }else{
+      window.speechSynthesis.cancel();
+      window.location.reload();
+    }
   };
 
 
