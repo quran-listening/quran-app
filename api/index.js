@@ -7,15 +7,20 @@ import { spawn } from "child_process";
 import fetch from "node-fetch";
 import FormData from "form-data";
 import dotenv from "dotenv";
+import { corsOptions } from "./corsOptions.js";
 
 dotenv.config();
 
 /* ───── basic setup ───── */
 const app = express();
+// app.use(cors(corsOptions));
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-const port = 3001;
+
+const { FRONTEND_BASE_URL } = process.env
+
+const port = process.env.PORT || 3001;
 
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
@@ -27,11 +32,12 @@ const sessions = Object.create(null);
 
 /* helper: run ffmpeg and capture stderr */
 const ff = (args) => new Promise((ok, bad) => {
-  const p = spawn("ffmpeg", ["-loglevel","error", ...args]);
+  const p = spawn("ffmpeg", ["-loglevel", "error", ...args]);
   let err = "";
   p.stderr.on("data", d => err += d);
   p.on("close", c => c === 0 ? ok() : bad(new Error(err.trim() || `ffmpeg ${c}`)));
 });
+
 
 /* ───────── /uploadChunk – append to one .webm file ───────── */
 app.post("/uploadChunk", upload.single("chunk"), (req, res) => {
@@ -47,12 +53,12 @@ app.post("/uploadChunk", upload.single("chunk"), (req, res) => {
 
   fs.appendFileSync(sess.webm, fs.readFileSync(req.file.path));
   fs.unlinkSync(req.file.path);
-  res.end();                             // 200
+  res.end(); // 200
 });
 
 /* ───────── /flush – incremental transcription ───────── */
 app.post("/flush", async (req, res) => {
-  console.log("body",req.body);
+  console.log("body", req.body);
   const { sessionId } = req.body;
   const sess = sessions[sessionId];
   if (!sess) return res.status(204).end();
@@ -65,7 +71,7 @@ app.post("/flush", async (req, res) => {
   const wav = path.join(uploadsDir, `${sessionId}.wav`);
 
   try {
-    await ff(["-i", sess.webm, "-ac","1","-ar","16000","-c:a","pcm_s16le", wav, "-y"]);
+    await ff(["-i", sess.webm, "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wav, "-y"]);
 
     /* Whisper */
     const form = new FormData();
@@ -75,15 +81,15 @@ app.post("/flush", async (req, res) => {
 
     const apiKey = req.get("X-OPENAI-KEY");
 
-    console.log("api key:",apiKey)
+    console.log("api key:", apiKey)
 
     const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-      method : "POST",
+      method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         ...form.getHeaders()
       },
-      body   : form
+      body: form
     });
     if (!r.ok) throw new Error(await r.text());
     const { text } = await r.json();
@@ -103,11 +109,11 @@ app.post("/flush", async (req, res) => {
   } finally {
     sess.busy = false;
     if (sess.queued) setImmediate(() =>
-      fetch("http://localhost:3001/flush", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
+      fetch(`${FRONTEND_BASE_URL}/flush`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId })
-      }).catch(() => {})
+      }).catch(() => { })
     );
   }
 });
