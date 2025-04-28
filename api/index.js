@@ -13,10 +13,11 @@ dotenv.config();
 
 /* ───── basic setup ───── */
 const app = express();
-// app.use(cors(corsOptions));
-app.use(cors());
+app.use(cors({origin:'*'}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+const host  = process.env.HOST || '0.0.0.0';
 
 const { FRONTEND_BASE_URL } = process.env
 
@@ -129,4 +130,4 @@ app.post("/endSession", (req, res) => {
   res.end();
 });
 
-app.listen(port, () => console.log(`API  ➜  http://localhost:${port}`));
+app.listen(port, () => console.log(`API  ➜  http://${host}:${port}`));
