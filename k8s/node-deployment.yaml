@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quran-api-prod
+  namespace: quran
+  labels:
+    app: quran-api-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: quran-api-prod
+  template:
+    metadata:
+      labels:
+        app: quran-api-prod
+    spec:
+      imagePullSecrets:
+      - name: my-docker-secret
+      containers:
+      - name: quran-api
+        image: waseemjutt/transcure:quran-api
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 9091
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: quran-api-prod
+  namespace: quran
+spec:
+  selector:
+    app: quran-api-prod
+  ports:
+    - protocol: TCP
+      port: 9091
+      targetPort: 9091
+  type: NodePort
