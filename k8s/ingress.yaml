@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: quran-ingress
+  namespace: quran
+spec:
+  rules:
+  - host: api.goquran.app
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: quran-api-prod
+            port:
+              number: 9091
