@@ -12,8 +12,8 @@ const useOpenAITranscription = ({
   const mediaRec = useRef(null);
 
   const BASE_URL = process.env.NODE_ENV === 'production'
-  ? 'https://your-production-server.com'
-  : 'http://localhost:3001';
+  ? 'https://api.goquran.app'
+  : 'http://localhost:9091';
 
   const genId = () =>
     `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
