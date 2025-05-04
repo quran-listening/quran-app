@@ -5,7 +5,8 @@ import RecitationContext from "./RecitationContext";
 
 // Custom hooks
 import useSpeechRecognition from "../hooks/useSpeechRecognition";
-
+import useOpenAITranscription from '../hooks/useOpenAITranscription';
+import useTranscriptionRouter from '../hooks/useTranscriptionRouter';
 // Helpers
 import {
   searchInWholeQuran,
@@ -41,6 +42,11 @@ export const RecitationProvider = ({ children }) => {
   const [language, setLanguage] = useState(() => {
     const savedLanguage = localStorage.getItem("language");
     return savedLanguage || "english"; // fallback to "english" if no saved preference
+  });
+
+  const [speechEngine, setSpeechEngine] = useState(() => {
+    // try to restore last choice
+    return localStorage.getItem("speechEngine") || "browser"; // "browser" | "whisper"
   });
 
   // Surah detection
@@ -82,6 +88,8 @@ export const RecitationProvider = ({ children }) => {
   const transcriptRef = useRef("");
   const autorecitationCheckRef = useRef(true);
   const quranDataRef = useRef(null);
+  const accumulatedTranscriptRef = useRef("");
+  const recognitionRef = useRef("");
 
   const checkdCheckBoxRef = useRef(true);
 
@@ -105,7 +113,7 @@ export const RecitationProvider = ({ children }) => {
   const [totalPausedTime, setTotalPausedTime] = useState(0);
   const [totalArabicWords, setTotalArabicWords] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentChunkStart] = useState(0);
+  
 
   // Control flags
   const [flag, setFlag] = useState(false); // "live" mode UI
@@ -188,6 +196,11 @@ export const RecitationProvider = ({ children }) => {
       .catch((error) => console.error("Error fetching Quran JSON:", error));
   }, [language]);
 
+
+  useEffect(() => {
+    localStorage.setItem("speechEngine", speechEngine);
+  }, [speechEngine]);
+
   // --------------- 2) Adjust TTS Speed ---------------
   const adjustTtsSpeed = (wordsCount, elapsedTimeMs) => {
     if (!wordsCount || elapsedTimeMs <= 0) {
@@ -218,7 +231,7 @@ export const RecitationProvider = ({ children }) => {
       newRate = 1.25;
     } else if (wpm > 60) {
       newRate = 1.0;
-    } else if (wpm <=10 || wpm >= 40) {
+    } else if (wpm <= 10 || wpm >= 40) {
       newRate = 0.85;
     } else {
       newRate = 1.0;
@@ -354,7 +367,7 @@ export const RecitationProvider = ({ children }) => {
     if (words.length < 3) {
       startTime.current = new Date();
     } else {
-      adjustTtsSpeed();
+      adjustTtsSpeed(words.length, Date.now() - startTime.current);
     }
     if (words.length < 3) {
       return;
@@ -382,7 +395,8 @@ export const RecitationProvider = ({ children }) => {
                 bismillahFoundRef.current = true;
                 const bismillahTranscript =
                   "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ";
-                bismillahDetection(bismillahTranscript, doSpeakTranslation, {
+                  const normalizedBismillah = normalizeArabicText(bismillahTranscript);
+                bismillahDetection(normalizedBismillah, doSpeakTranslation, {
                   translationsArray,
                   lastAyahIdRef,
                   translationRecognizedTextRef,
@@ -395,7 +409,7 @@ export const RecitationProvider = ({ children }) => {
                   recognitionRef,
                 });
                 wordQueue = [];
-                recognitionRef.current.stop();
+                resetter();
                 return;
               }
             } else {
@@ -428,6 +442,37 @@ export const RecitationProvider = ({ children }) => {
       }
     }
   };
+   // ---------------  Use the custom hook: useOpenAITranscription ---------------
+  // This hook handles the actual browser speech recognition events
+
+  const {
+    recording: isRecording,
+    startRecognition,
+    stopRecognition,
+  } = useTranscriptionRouter(speechEngine, {
+    onTranscriptionResult: (text) => {
+      /* your existing logic */
+      setRecognizedText(text);
+      accumulatedTranscriptRef.current += " " + text;
+      checkForMatches(accumulatedTranscriptRef.current);
+    },
+    language,
+    checkForMatches,
+    setRecognizedText,
+    isListeningRef,
+    pauseStartTime,
+    setPauseStartTime,
+    totalPausedTime,
+    setTotalPausedTime,
+    startTime,
+    adjustTtsSpeed,
+    matchesFoundRef,
+    interruptFlagRef,
+    setTranslations,
+    totalArabicWords,
+    setTotalArabicWords,
+    autorecitationCheckRef,
+  });
 
   // ---- The effect in the old style ----
   useEffect(() => {
@@ -581,7 +626,7 @@ export const RecitationProvider = ({ children }) => {
   }, [autoReciteInProgressRef.current, currentSurahData.current]);
 
   const stopRecognitionAndReset = () => {
-    stopListening();
+    stopRecognition();
   };
 
   const resetter = () => {
@@ -625,69 +670,42 @@ export const RecitationProvider = ({ children }) => {
 
   // --------------- 7) Start + Stop Listening ---------------
   const startListening = () => {
-    // Reset the last transcript time when starting
     lastTranscriptTimeRef.current = Date.now();
-
-    // Start the timeout check
-    noTranscriptTimeoutRef.current = setTimeout(
-      handleNoTranscriptTimeout,
-      1000
-    );
-    // small TTS to un-block on iOS
+    noTranscriptTimeoutRef.current = setTimeout(handleNoTranscriptTimeout, 1000);
     doSpeakTranslation(" ");
 
     if (!isListeningRef.current) {
       isListeningRef.current = true;
-      setFlag(true); // switch UI to "live" mode
-      startRecognition(); // from our custom hook
+      setFlag(true);
+      startRecognition();
     }
   };
 
-  const stopListening = () => {
-    // Clear the timeout
+  const stopListening = async() => {
+    console.log("stop Recognition called", stopRecognition())
     if (noTranscriptTimeoutRef.current) {
       clearTimeout(noTranscriptTimeoutRef.current);
       noTranscriptTimeoutRef.current = null;
     }
-    stopRecognition(); // from our custom hook
+    
     isListeningRef.current = false;
     setFlag(false);
-    window.speechSynthesis.cancel();
-    window.location.reload();
+    if (speechEngine === "whisper") {
+      await stopRecognition();
+      window.speechSynthesis.cancel();
+      window.location.reload();
+    }else{
+      window.speechSynthesis.cancel();
+      window.location.reload();
+    }
   };
 
-  // --------------- 8) Use the custom hook: useSpeechRecognition ---------------
-  // This hook handles the actual browser speech recognition events
 
-  const {
-    startRecognition,
-    stopRecognition,
-    recognitionRef,
-    accumulatedTranscriptRef,
-  } = useSpeechRecognition({
-    language,
-    isListeningRef,
-    recognizedText,
-    setRecognizedText,
-    pauseStartTime,
-    setPauseStartTime,
-    totalPausedTime,
-    setTotalPausedTime,
-    startTime,
-    checkForMatches,
-    adjustTtsSpeed,
-    interruptFlagRef,
-    matchesFoundRef,
-    setTranslations,
-    totalArabicWords,
-    setTotalArabicWords,
-    autorecitationCheckRef
-  });
 
   // Add this function inside RecitationProvider
   const jumpToVerse = (surahNum, verseNum) => {
     if (!quranDataRef.current) return;
-    
+
 
     // Validate surah number
     if (surahNum < 1 || surahNum > 114) {
@@ -720,8 +738,7 @@ export const RecitationProvider = ({ children }) => {
     autoReciteInProgressRef.current = true;
 
     // Reset any existing state
-    
-    
+    resetter();
 
     // Start from the selected verse
     const verseData = {
@@ -731,9 +748,16 @@ export const RecitationProvider = ({ children }) => {
       translation: verse.translation
     };
     // Add the verse to the display list and speak its translation
-    
+
     // doSpeakTranslation(verse.translation);
   };
+
+  useEffect(() => {
+    if (!isListeningRef.current) return;          // not recording → nothing to do
+    stopRecognition();                              // stop the old engine
+    startRecognition();                             // start the new one
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speechEngine]);
 
   // --------------- 9) Provide all states & methods ---------------
   const providerValue = {
@@ -770,7 +794,8 @@ export const RecitationProvider = ({ children }) => {
 
     // Setters
     setLanguage,
-
+    speechEngine,          // <‑‑ current engine: "browser" | "whisper"
+    setSpeechEngine,
     setCheckdCheckBox,
 
     // Methods

@@ -145,7 +145,6 @@ export default function useSpeechRecognition({
   }, [language]);
 
   function startRecognition() {
-    console.log("isListening", isListeningRef.current);
     if (!recognitionRef.current) return;
 
     // Check if recognition is already in progress
