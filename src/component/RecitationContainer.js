@@ -38,11 +38,13 @@ import {
   stopRecordingBtn,
 } from "../styles/VerseTranslationStyle.js";
 
+import MuiAlert from "@mui/material/Alert";
+
 // Hooks & components
 import useMicrophone from "../hooks/useMicrophones";
 import LiveMicVisualizer from "./LiveMicVisualizer";
 import FeedbackForm from "./FeedbackForm";
-import { ClickAwayListener, Tooltip } from "@mui/material";
+import { ClickAwayListener, Snackbar, Tooltip } from "@mui/material";
 import { languagesData } from "../utils/constant.js";
 
 const RecitationContainer = () => {
@@ -70,6 +72,9 @@ const RecitationContainer = () => {
     autorecitationCheckRef,
     quranDataRef,
     isLoading,
+    speechEngine,
+    setSpeechEngine,
+    isListeningRef,
     jumpToVerse,
     resetter,
   } = useContext(RecitationContext);
@@ -94,6 +99,14 @@ const RecitationContainer = () => {
   const [showStartText, setShowStartText] = useState(true);
 
   const [arabicRecognizedText, setArabicRecognizedText] = useState("");
+
+  const [whisperKey, setWhisperKey] = useState(() =>
+    localStorage.getItem("whisperKey") || ""
+  );
+  const [loading, setLoading] = useState(false); // For API call loading state
+  const [apiResponse, setApiResponse] = useState({}); // For API call loading state
+  const [snackbarOpen, setSnackbarOpen] = useState(false); // For Snackbar visibility
+  const [snackbarMessage, setSnackbarMessage] = useState(""); // For Snackbar message
   const [isMuted, setIsMuted] = useState(true);
   // Add timer state near other state declarations
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -302,22 +315,121 @@ const RecitationContainer = () => {
     setVerseError("");
   };
 
+
+  // handler
+  // const handleSpeechEngineChange = (event, value) => {
+  //   const newVal = value ?? event?.target?.value;   // works for Joy Select or <select>
+  //   if (!newVal) return;                 // safety
+  //   if (isListeningRef.current) return;  // don’t switch mid‑recording
+
+  //   setSpeechEngine(newVal);
+
+  //   if (newVal === "whisper") {
+  //     let key = localStorage.getItem("whisperKey");
+  //     if (!key) {
+  //       key = prompt("Enter your personal OpenAI API key")?.trim();
+  //       console.log("new Val:",key)
+  //       if (!key) return setSpeechEngine("browser");   // user cancelled
+  //       localStorage.setItem("whisperKey", key);
+  //     }
+  //     setWhisperKey(key);
+  //   }
+  // };
+
+
+  // Handle speech engine change
+  const handleSpeechEngineChange = (event, value) => {
+    const newVal = value ?? event?.target?.value;
+    if (!newVal) return;
+    if (isListeningRef.current) return;
+
+    setSpeechEngine(newVal);
+
+    if (newVal === "whisper") {
+      let key = localStorage.getItem("whisperKey");
+      if (!key) {
+        key = prompt("Enter your personal OpenAI API key")?.trim();
+        if (!key) return setSpeechEngine("browser");
+
+        localStorage.setItem("whisperKey", key);
+      }
+      setWhisperKey(key);
+
+      checkApiKeyValidity(key);
+    }
+  };
+
+  // Check API key validity
+  // Update API key validation function
+  const checkApiKeyValidity = async (key) => {
+    setLoading(true); // Show loader
+    try {
+      const response = await fetch("https://api.openai.com/v1/models", {
+        headers: {
+          "Authorization": `Bearer ${key}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || "Invalid API key");
+      }
+
+      // If valid, just close loading
+      setLoading(false);
+    } catch (error) {
+      // Handle invalid key or network errors
+      console.error("API key validation failed:", error);
+      setSnackbarMessage(error.message || "Invalid API key. Please check your key and try again.");
+      setSnackbarOpen(true);
+
+      // Clear invalid key and reset engine
+      localStorage.removeItem("whisperKey");
+      setSpeechEngine("browser");
+    } finally {
+      setLoading(false); // Ensure loading is always stopped
+    }
+  };
+
+  // Snackbar close handler
+  const handleCloseSnackbar = () => {
+    setSnackbarOpen(false);
+  };
+
   // Render
   return (
     <Box sx={backgroundBg}>
-      {isLoading ? (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            minHeight: "100vh",
-          }}
-        >
-          <CircularProgress />
-        </Box>
+      {isLoading || loading ? (
+        <>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "100vh",
+            }}
+          >
+            <CircularProgress />
+          </Box>
+        </>
       ) : (
         <Box sx={contentWrapper}>
+          {/* Snackbar for displaying errors */}
+          <Snackbar
+            open={snackbarOpen}
+            autoHideDuration={6000}
+            onClose={handleCloseSnackbar}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          >
+            <MuiAlert
+              elevation={6}
+              variant="filled"
+              onClose={handleCloseSnackbar}
+              severity="error"
+            >
+              {snackbarMessage}
+            </MuiAlert>
+          </Snackbar>
           {!flag && (
             <Box>
               <Box
@@ -472,83 +584,83 @@ const RecitationContainer = () => {
                     {viewWidth > 800 && <Box sx={{ display: "flex", alignItems: viewWidth < 800 ? "flex-start" : "center", justifyContent: viewWidth < 600 ? "flex-start" : "center", flexWrap: "wrap", gap: "5px" }}>
                       <Typography sx={{ color: "#fff", fontSize: "15px", marginRight: "10px" }}>Start Recitation from:</Typography>
                       <Box>
-                      <Input
-                        style={{ width: viewWidth < 800 ? "100%" : "150px" }}
-                        placeholder="surah number"
-                        type="number"
-                        value={surahNumber}
-                        onChange={handleSurahChange}
-                        sx={{
-                          marginRight: 1,
-                          '&.Mui-error': {
-                            borderColor: '#f44336',
-                          },
-                          ...(surahError && {
-                            borderColor: '#f44336',
-                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
-                          })
-                        }}
-                        error={!!surahError}
-                      />
-                      {surahError && (
-                        <Typography
+                        <Input
+                          style={{ width: viewWidth < 800 ? "100%" : "150px" }}
+                          placeholder="surah number"
+                          type="number"
+                          value={surahNumber}
+                          onChange={handleSurahChange}
                           sx={{
-                            color: '#f44336',
-                            fontSize: '0.75rem',
-                            ml: 1
-                          }}
-                        >
-                          {surahError}
-                        </Typography>
-                      )}
-                      </Box>  
-                      <Box>
-                      <Input
-                        style={{ width: viewWidth < 800 ? "100%" : "150px" }}
-                        placeholder="verse number"
-                        type="number"
-                        value={verseNumber}
-                        onChange={handleVerseChange}
-                        sx={{
-                          marginRight: 1,
-                          '&.Mui-error': {
-                            borderColor: '#f44336',
-                          },
-                          ...(verseError && {
-                            borderColor: '#f44336 !important',
-                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
-                            '& input': {
-                              color: '#f44336',
-                            }
-                          })
-                        }}
-                        error={!!verseError}
-                        slotProps={{
-                          input: {
-                            sx: {
-                              '--Input-decoratorChildHeight': '45px',
+                            marginRight: 1,
+                            '&.Mui-error': {
+                              borderColor: '#f44336',
                             },
-                          },
-                          helperText: {
-                            sx: {
-                              color: '#f44336',
-                            },
-                          },
-                        }}
-                      />
-                      <Box>
-                      {verseError && (
-                        <Typography
-                          sx={{
-                            color: '#f44336',
-                            fontSize: '0.75rem',
-                            ml: 1
+                            ...(surahError && {
+                              borderColor: '#f44336',
+                              backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                            })
                           }}
-                        >
-                          {verseError}
-                        </Typography>
-                      )}
+                          error={!!surahError}
+                        />
+                        {surahError && (
+                          <Typography
+                            sx={{
+                              color: '#f44336',
+                              fontSize: '0.75rem',
+                              ml: 1
+                            }}
+                          >
+                            {surahError}
+                          </Typography>
+                        )}
                       </Box>
+                      <Box>
+                        <Input
+                          style={{ width: viewWidth < 800 ? "100%" : "150px" }}
+                          placeholder="verse number"
+                          type="number"
+                          value={verseNumber}
+                          onChange={handleVerseChange}
+                          sx={{
+                            marginRight: 1,
+                            '&.Mui-error': {
+                              borderColor: '#f44336',
+                            },
+                            ...(verseError && {
+                              borderColor: '#f44336 !important',
+                              backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                              '& input': {
+                                color: '#f44336',
+                              }
+                            })
+                          }}
+                          error={!!verseError}
+                          slotProps={{
+                            input: {
+                              sx: {
+                                '--Input-decoratorChildHeight': '45px',
+                              },
+                            },
+                            helperText: {
+                              sx: {
+                                color: '#f44336',
+                              },
+                            },
+                          }}
+                        />
+                        <Box>
+                          {verseError && (
+                            <Typography
+                              sx={{
+                                color: '#f44336',
+                                fontSize: '0.75rem',
+                                ml: 1
+                              }}
+                            >
+                              {verseError}
+                            </Typography>
+                          )}
+                        </Box>
                       </Box>
                       <Button
                         onClick={handleJumpToVerse}
@@ -939,8 +1051,8 @@ const RecitationContainer = () => {
                     </Typography>
                   </Box>
                   {viewWidth < 800 && <Box>
-                    <Typography sx={{ color: "#fff", fontSize: "15px", marginRight: "10px",marginBottom:"5px" }}>Start Recitation from:</Typography>
-                    <Box sx={{marginBottom:"10px"}}>
+                    <Typography sx={{ color: "#fff", fontSize: "15px", marginRight: "10px", marginBottom: "5px" }}>Start Recitation from:</Typography>
+                    <Box sx={{ marginBottom: "10px" }}>
                       <Input
                         style={{ width: viewWidth < 800 ? "100%" : "150px", marginBottom: "10px" }}
                         placeholder="surah number"
@@ -960,24 +1072,24 @@ const RecitationContainer = () => {
                         error={!!surahError}
                       />
                       <Box>
-                      {surahError && (
-                        <Typography
-                          sx={{
-                            color: '#f44336',
-                            fontSize: '0.75rem',
-                            ml: 1,
-                            marginTop: "-7px",
-                            marginBottom: "10px"
-                          }}
-                        >
-                          {surahError}
-                        </Typography>
-                      )}
+                        {surahError && (
+                          <Typography
+                            sx={{
+                              color: '#f44336',
+                              fontSize: '0.75rem',
+                              ml: 1,
+                              marginTop: "-7px",
+                              marginBottom: "10px"
+                            }}
+                          >
+                            {surahError}
+                          </Typography>
+                        )}
                       </Box>
                     </Box>
-                    <Box sx={{marginBottom:"10px"}}>
+                    <Box sx={{ marginBottom: "10px" }}>
                       <Input
-                        style={{ width: viewWidth < 800 ? "100%" : "150px",  }}
+                        style={{ width: viewWidth < 800 ? "100%" : "150px", }}
                         placeholder="verse number"
                         type="number"
                         value={verseNumber}
@@ -1010,18 +1122,18 @@ const RecitationContainer = () => {
                         }}
                       />
                       <Box>
-                      {verseError && (
-                        <Typography
-                          sx={{
-                            color: '#f44336',
-                            fontSize: '0.75rem',
-                            ml: 1,
-                            marginBottom: "10px"
-                          }}
-                        >
-                          {verseError}
-                        </Typography>
-                      )}
+                        {verseError && (
+                          <Typography
+                            sx={{
+                              color: '#f44336',
+                              fontSize: '0.75rem',
+                              ml: 1,
+                              marginBottom: "10px"
+                            }}
+                          >
+                            {verseError}
+                          </Typography>
+                        )}
                       </Box>
                     </Box>
                     <Button
@@ -1126,6 +1238,32 @@ const RecitationContainer = () => {
                     {lang.charAt(0).toUpperCase() + lang.slice(1)}
                   </Option>
                 ))}
+              </Select>
+
+              <Select
+                placeholder="Select speech engine"
+                value={speechEngine}
+                onChange={handleSpeechEngineChange}
+                indicator={<KeyboardArrowDown />}
+                sx={{
+                  width: 240,
+                  marginTop: "10px",
+                  backgroundColor: "#2C5741",
+                  border: "1px solid #fff",
+                  color: "#fff",
+                  "&:hover ": {
+                    backgroundColor: "#2C5741",
+                  },
+                  [`& .${selectClasses.indicator}`]: {
+                    transition: "0.2s",
+                    [`&.${selectClasses.expanded}`]: {
+                      transform: "rotate(-180deg)",
+                    },
+                  },
+                }}
+              >
+                <Option value="browser">Browser Speech API</Option>
+                <Option value="whisper">OpenAI Whisper</Option>
               </Select>
 
               <Box

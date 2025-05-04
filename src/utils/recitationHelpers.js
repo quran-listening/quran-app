@@ -121,7 +121,6 @@ export const bismillahDetection = (transcript, speakTranslation, params) => {
       language,
     });
   }
-  recognitionRef.current.stop();
 };
 
 /**

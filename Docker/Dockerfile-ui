@@ -1,0 +1,46 @@
+# Base image
+FROM node:22-alpine AS build
+
+WORKDIR /app
+
+#RUN apt-get update && \
+#    apt-get install -y ffmpeg
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
+  && apk update \
+
+  && apk add --no-cache ffmpeg
+
+
+COPY src/ ./src/
+
+# Copy public assets
+COPY public/ ./public/
+
+# Copy environment file if needed
+COPY .env .env
+
+
+# Install dependencies
+COPY package*.json  ./
+RUN npm install
+
+# Copy source
+#COPY . .
+EXPOSE 3000
+CMD [ "npm", "start" ]
+# Build the app
+#RUN npm run build
+
+# Serve with nginx
+#FROM nginx:alpine
+#COPY --from=build /app/build /usr/share/nginx/html
+
+##install ffmpeg package
+#RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
+  #&& apk update \
+
+  #&& apk add --no-cache ffmpeg
+
+#EXPOSE 3000
+#CMD ["nginx", "-g", "daemon off;"]
+
