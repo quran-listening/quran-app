@@ -21,7 +21,7 @@ const host  = process.env.HOST || '0.0.0.0';
 
 const { FRONTEND_BASE_URL } = process.env
 
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 9091;
 
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
