@@ -17,6 +17,7 @@ import {
   initRollingWindow,
   removeNonArabicWords,
   findMultipleMatches,
+  searchInWholeQuranWithBismillah,
 } from "../utils/recitationHelpers";
 
 import {
@@ -27,13 +28,33 @@ import surahLastAyah from "../data/surahLastAyah.json";
 
 
 import { normalizeArabicText } from "../utils/normalizeArabicText";
-import { calculateSimilarity } from "../utils/quranUtils";
+import { calculateSimilarity, isLastAyahSpoken, isLastVerse } from "../utils/quranUtils";
 import { languagesData } from "../utils/constant";
+import { wholeQuran } from "../data/wholeQuran";
 
 /**
  * The RecitationProvider manages all global states and methods
  * for real-time Quranic recitation & translation.
+ * 
  */
+
+// const nameToId = surahNameArray.reduce((acc, s) => {
+//   acc[s.name] = s.surahId;            // "البقرة" → 2, etc.
+//   return acc;
+// }, {});
+
+// const lastAyahMap = surahLastAyah.reduce((acc, row) => {
+//   const sid = nameToId[row.name];     // look up numeric id from the name
+//   if (sid) acc[sid] = row.normalizedText;
+//   return acc;
+// }, {});
+
+// const isLastAyah = (sid, transcriptNorm) => {
+//   const normLast = lastAyahMap[sid];
+//   if (!normLast) return false;
+//   return calculateSimilarity(transcriptNorm, normLast) >= 0.82;
+// };
+
 export const RecitationProvider = ({ children }) => {
   // ------------------- Global States -------------------
   const [recognizedText, setRecognizedText] = useState("");
@@ -92,6 +113,8 @@ export const RecitationProvider = ({ children }) => {
   const recognitionRef = useRef("");
 
   const checkdCheckBoxRef = useRef(true);
+  const surahTotalsRef = useRef({});
+  const noHitCounterRef = useRef(0);    // counts consecutive “misses”
 
   // "Next verse" matching
   const [rollingWindow, setRollingWindow] = useState([]);
@@ -113,7 +136,7 @@ export const RecitationProvider = ({ children }) => {
   const [totalPausedTime, setTotalPausedTime] = useState(0);
   const [totalArabicWords, setTotalArabicWords] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  
+
 
   // Control flags
   const [flag, setFlag] = useState(false); // "live" mode UI
@@ -160,7 +183,6 @@ export const RecitationProvider = ({ children }) => {
           // Replace `id` with `surahId`
           const modifiedSurah = { ...surah, surahId: surah.id };
 
-
           if (index === 0) {
             // Remove only the first verse (id: 1)
             const filteredVerses = surah.verses.filter(
@@ -195,6 +217,13 @@ export const RecitationProvider = ({ children }) => {
       })
       .catch((error) => console.error("Error fetching Quran JSON:", error));
   }, [language]);
+
+
+
+  function isLastVerse(surahId, verseId) {
+    const total = surahTotalsRef.current[surahId];
+    return total && verseId === total;
+  }
 
 
   useEffect(() => {
@@ -243,6 +272,7 @@ export const RecitationProvider = ({ children }) => {
 
   // --------------- 4) Wrappers for recitationHelpers ---------------
   const doSearchInWholeQuran = (transcript) => {
+    console.log("search in whole Quran called")
     searchInWholeQuran(transcript, {
       quranDataRef,
       wholeQuranDataRef,
@@ -302,25 +332,6 @@ export const RecitationProvider = ({ children }) => {
       1000
     );
 
-    // Get the last ayah of current surah if one is selected
-    const currentSurahLastAyah = surahId.current > 0
-      ? surahLastAyah.find(ayah => ayah.surahId === surahId.current)
-      : null;
-
-    // Only check for last ayah if we're in a surah
-    if (currentSurahLastAyah && surahFlag.current) {
-      const normalizedTranscript = normalizeArabicText(transcript);
-      const normalizedLastAyah = normalizeArabicText(currentSurahLastAyah.normalizedText);
-
-      // Calculate similarity between transcript and last ayah
-      const similarity = calculateSimilarity(normalizedTranscript, normalizedLastAyah);
-
-      if (similarity > 0.8) { // You can adjust this threshold
-        console.log("Last ayah of surah detected");
-        resetter();
-        return;
-      }
-    }
 
     const GairilMaghzobiTranscript = "غير المغضوب عليهم";
 
@@ -332,6 +343,7 @@ export const RecitationProvider = ({ children }) => {
     const AllahoakbarTranscript = "الله اكبر";
     const Allahoakbar = "اللّٰهُ أَكْبَرْ";
     const AllahoakbarTranslation = "Allah is the Greatest";
+
 
     if (
       transcript?.includes(AllahoakbarTranscript) &&
@@ -362,6 +374,24 @@ export const RecitationProvider = ({ children }) => {
     if (autoReciteInProgressRef.current) {
       return;
     }
+    /* BISMILLAH-first shortcut ------------------------------------ */
+    if (
+      !surahFlag.current &&
+      surahId.current < 1 &&
+      searchInWholeQuranWithBismillah(transcript, {
+        quranDataRef,
+        wholeQuran,                // <-- pass the full-surah array you imported
+        surahFlag,
+        surahId,
+        setSurahName,
+        currentSurahData,
+        currentVerseIndexRef,
+        autoReciteInProgressRef,
+      })
+    ) {
+      // we found the surah → nothing else to do in this call
+      return;
+    }
     // Split on any whitespace and remove empty entries
     const words = transcript.trim().split(/\s+/).filter(Boolean);
     if (words.length < 3) {
@@ -375,7 +405,6 @@ export const RecitationProvider = ({ children }) => {
       // Initialize word queue for progressive matching
       let wordQueue = [];
       let matchFound = false;
-      console.log("checkForMatches123", surahFlag.current, surahId.current);
       // Try matching with increasing number of words
       for (let i = 0; i < words.length && !matchFound; i++) {
         wordQueue.push(words[i]);
@@ -389,13 +418,18 @@ export const RecitationProvider = ({ children }) => {
             matchFound = true;
 
             const foundItem = fuseResults[0].item;
+            if (isLastVerse(foundItem.id, foundItem.verseId)) {
+              resetter();
+              return;
+            }
+
             if (foundItem?.id === 0) {
               // bismillahDetection detected
               if (!bismillahFoundRef.current) {
                 bismillahFoundRef.current = true;
                 const bismillahTranscript =
                   "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ";
-                  const normalizedBismillah = normalizeArabicText(bismillahTranscript);
+                const normalizedBismillah = normalizeArabicText(bismillahTranscript);
                 bismillahDetection(normalizedBismillah, doSpeakTranslation, {
                   translationsArray,
                   lastAyahIdRef,
@@ -407,9 +441,8 @@ export const RecitationProvider = ({ children }) => {
                   ttsRate: ttsRate.current,
                   language,
                   recognitionRef,
+                  resetter
                 });
-                wordQueue = [];
-                resetter();
                 return;
               }
             } else {
@@ -442,7 +475,7 @@ export const RecitationProvider = ({ children }) => {
       }
     }
   };
-   // ---------------  Use the custom hook: useOpenAITranscription ---------------
+  // ---------------  Use the custom hook: useOpenAITranscription ---------------
   // This hook handles the actual browser speech recognition events
 
   const {
@@ -513,15 +546,15 @@ export const RecitationProvider = ({ children }) => {
               }));
             rollingWindowRef.current = rollingVerses;
 
-            console.log("\n--- Rolling Window Debug ---");
-            console.log("Current verse index:", i);
-            rollingVerses.forEach((rv, index) => {
-              console.log(
-                `Window position ${index + 1}:`,
-                rv.text.substring(0, 50) + "..."
-              );
-            });
-            console.log("------------------------\n");
+            // console.log("\n--- Rolling Window Debug ---");
+            // console.log("Current verse index:", i);
+            // rollingVerses.forEach((rv, index) => {
+            //   console.log(
+            //     `Window position ${index + 1}:`,
+            //     rv.text.substring(0, 50) + "..."
+            //   );
+            // });
+            // console.log("------------------------\n");
 
             // The inline function to check transcripts
             const checkTranscriptMatch = () => {
@@ -575,7 +608,6 @@ export const RecitationProvider = ({ children }) => {
                 // Reset counter if window is not empty
                 emptyResultsCounter.current = 0;
               }
-
               return true;
             };
 
@@ -609,6 +641,17 @@ export const RecitationProvider = ({ children }) => {
                 }
               }, 100);
             });
+            /* end-of-sūrah guard */
+            // if (isLastAyah(currentSurahData.current.surahId,
+            //   normalizeArabicText(verse.text))) {
+            //   console.log("📘 Auto-recite reached the last âyah");
+            //   resetter();
+            //   return;
+            // }
+            if (isLastVerse(currentSurahData.current.surahId, verse?.verseId)) {
+              resetter();                     // stop & clear
+              return;                         // exit the async function
+            }
           }
 
           // Done reciting
@@ -631,10 +674,22 @@ export const RecitationProvider = ({ children }) => {
 
   const resetter = () => {
     console.log("resetter called");
+
+    /* 1️⃣  Abort SpeechRecognition & empty buffers */
+
+    isListeningRef.current = false;
+    transcriptRef.current = "";
+    accumulatedTranscriptRef.current = "";
+
     // Clear the timeout
     if (noTranscriptTimeoutRef.current) {
       clearTimeout(noTranscriptTimeoutRef.current);
       noTranscriptTimeoutRef.current = null;
+    }
+
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
     }
     // stopRecognition();
 
@@ -661,6 +716,9 @@ export const RecitationProvider = ({ children }) => {
     surahEndFlagRef.current = false;
     autoReciteInProgressRef.current = false;
     matchesFoundRef.current = true;
+
+    try { recognitionRef.current?.abort(); } catch (_) { }
+    try { recognitionRef.current?.stop(); } catch (_) { }
   };
 
   // --------------- 6) Mute/unmute TTS ---------------
@@ -681,20 +739,20 @@ export const RecitationProvider = ({ children }) => {
     }
   };
 
-  const stopListening = async() => {
+  const stopListening = async () => {
     console.log("stop Recognition called", stopRecognition())
     if (noTranscriptTimeoutRef.current) {
       clearTimeout(noTranscriptTimeoutRef.current);
       noTranscriptTimeoutRef.current = null;
     }
-    
+
     isListeningRef.current = false;
     setFlag(false);
     if (speechEngine === "whisper") {
       await stopRecognition();
       window.speechSynthesis.cancel();
       window.location.reload();
-    }else{
+    } else {
       window.speechSynthesis.cancel();
       window.location.reload();
     }
