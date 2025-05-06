@@ -11,13 +11,17 @@ const useOpenAITranscription = ({
   const sessionId = useRef(null);
   const mediaRec = useRef(null);
 
+  const BASE_URL = process.env.NODE_ENV === 'production'
+  ? 'https://api.goquran.app'
+  : 'http://localhost:9091';
+
   const genId = () =>
     `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const flush = async () => {
     if (!sessionId.current) return;
     const apiKey =  localStorage.getItem("whisperKey") ||whisperKey || "";
-    const r = await fetch("http://localhost:3001/flush", {
+    const r = await fetch(`${BASE_URL}/flush`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -44,7 +48,7 @@ const useOpenAITranscription = ({
       const fd = new FormData();
       fd.append("chunk", e.data, "chunk.webm");
       fd.append("sessionId", sessionId.current);
-      await fetch("http://localhost:3001/uploadChunk", { method: "POST", body: fd });
+      await fetch(`${BASE_URL}/uploadChunk`, { method: "POST", body: fd });
     };
     mediaRec.current.start(3000);        // 3‑s chunks
 
@@ -59,7 +63,7 @@ const useOpenAITranscription = ({
     clearInterval(flush.timer);
     await flush();                       // final flush
 
-    await fetch("http://localhost:3001/endSession", {
+    await fetch(`${BASE_URL}/endSession`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId: sessionId.current })
