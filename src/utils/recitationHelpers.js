@@ -63,6 +63,71 @@ export function searchInWholeQuran(
   }
 }
 
+
+/**
+ * If the transcript begins with the Bismillah, try to identify the
+ * surah by matching “Bismillah + first‐verse” against the whole-Qur’an array.
+ *
+ * @param {string} transcript  Raw transcript (may contain non-Arabic noise)
+ * @param {object} ctx         Same context bundle you pass to searchInWholeQuran
+ *                             (quranDataRef, setSurahName …)
+ */
+export function searchInWholeQuranWithBismillah(
+  transcript,
+  {
+    quranDataRef,
+    wholeQuran,                 // <<< note: full-surah array, not the verse list
+    surahFlag,
+    surahId,
+    setSurahName,
+    currentSurahData,
+    currentVerseIndexRef,
+    autoReciteInProgressRef
+  }
+) {
+  // normalise + strip any non-Arabic chars
+  const cleaned = normalizeArabicText(transcript);
+  const bismillah = "بسم الله الرحمن الرحيم";
+
+  // 1️⃣  Require the recitation to *start* with Bismillah
+  if (!cleaned.startsWith(bismillah)) return false;
+
+  // 2️⃣  Remove the Bismillah so we are left with the first verse text
+  const afterBismillah = cleaned.replace(bismillah, "").trim();
+  if (afterBismillah.length === 0) return false;          // user recited only Bismillah
+
+  // 3️⃣  Build a Fuse index over the whole-surah dataset
+  const corpus = wholeQuran.map(s => ({
+    ...s,
+    normalizedText: normalizeArabicText(s.text)           // whole-surah text (incl. Bismillah)
+  }));
+
+  const fuse = new Fuse(corpus, {
+    keys: ["normalizedText"],
+    threshold: 0.25,         // a little stricter, because matching long texts
+    includeScore: true
+  });
+
+  const results = fuse.search(bismillah + " " + afterBismillah);
+  if (results.length === 0) return false;
+
+  const match        = results[0].item;
+  const foundSurahId = match.surahId;
+
+  /* --- lock the context exactly as searchInWholeQuran does --- */
+  surahFlag.current   = true;
+  surahId.current     = foundSurahId;
+  setSurahName(match.name);
+
+  const surahDataItem = quranDataRef.current[foundSurahId - 1];
+  currentSurahData.current   = surahDataItem;
+  currentVerseIndexRef.current = 0;     // start at first verse
+  autoReciteInProgressRef.current = true;
+
+  return true;   // ← caller can stop further processing
+}
+
+
 /**
  * Creates and returns a new Fuse.js instance for a given list, threshold, etc.
  *
@@ -95,7 +160,7 @@ export const bismillahDetection = (transcript, speakTranslation, params) => {
     isMutedRef,
     ttsRate,
     language,
-    recognitionRef,
+    resetter,
   } = params || {}; // Fallback to an empty object if params is undefined
 
   const bismillahTranslation =
@@ -115,6 +180,12 @@ export const bismillahDetection = (transcript, speakTranslation, params) => {
         translation: bismillahTranslation,
       },
     ]);
+    const bismillahTranscript = "بسم الله الرحمن الرحيم";
+
+    if (transcript?.includes(bismillahTranscript)) {
+      resetter();
+      return;
+    }
     speakTranslation(bismillahTranslation, {
       isMutedRef,
       ttsRate: ttsRate.current,
@@ -149,7 +220,6 @@ export function speakTranslation(text, { isMutedRef, ttsRate, language }) {
       lang: voice.lang,
     }));
 
-    console.log("Supported TTS Languages:", supportedLanguages);
   }, 1000);
 
   const utterance = new SpeechSynthesisUtterance(text);
