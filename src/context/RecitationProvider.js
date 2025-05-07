@@ -89,6 +89,7 @@ export const RecitationProvider = ({ children }) => {
   const lastAyahIdRef = useRef(0);
   const fuseRef = useRef(null);
   const isMutedRef = useRef(true);
+  const isMicMutedRef = useRef(false);
   const rollingWindowRef = useRef([]);
   const bismillahFoundRef = useRef(false);
   const AllahoHoAkbarFoundRef = useRef(false);
@@ -114,7 +115,7 @@ export const RecitationProvider = ({ children }) => {
 
   const checkdCheckBoxRef = useRef(true);
   const surahTotalsRef = useRef({});
-  const noHitCounterRef = useRef(0);    // counts consecutive “misses”
+  const noHitCounterRef = useRef(0);    // counts consecutive "misses"
 
   // "Next verse" matching
   const [rollingWindow, setRollingWindow] = useState([]);
@@ -317,7 +318,29 @@ export const RecitationProvider = ({ children }) => {
     }
   };
 
+  const handleMicMute = () => {
+    if (speechEngine === "whisper") {
+      isMicMutedRef.current = !isMicMutedRef.current;
+      // If muting, stop any ongoing recognition
+      if (isMicMutedRef.current && recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (error) {
+          console.error("Error stopping recognition:", error);
+        }
+      }
+      // If unmuting, restart recognition if we were listening
+      else if (!isMicMutedRef.current && isListeningRef.current) {
+        startRecognition();
+      }
+    }
+  };
+
   const checkForMatches = (main_transcript) => {
+    if (speechEngine === "whisper" && isMicMutedRef.current) {
+      return; // Don't process audio when mic is muted and using OpenAI
+    }
+    
     transcriptRef.current = main_transcript;
     // Clean the transcript to only include Arabic words
     const transcript = removeNonArabicWords(main_transcript);
@@ -484,10 +507,24 @@ export const RecitationProvider = ({ children }) => {
     stopRecognition,
   } = useTranscriptionRouter(speechEngine, {
     onTranscriptionResult: (text) => {
-      /* your existing logic */
+      /* Skip processing if mic is muted */
+      if (speechEngine === "whisper" && isMicMutedRef.current) {
+        return;
+      }
       setRecognizedText(text);
       accumulatedTranscriptRef.current += " " + text;
       checkForMatches(accumulatedTranscriptRef.current);
+    },
+    onFlush: () => {
+      /* Skip flush if mic is muted */
+      if (speechEngine === "whisper" && isMicMutedRef.current) {
+        return;
+      }
+      // Continue with normal flush processing
+      if (accumulatedTranscriptRef.current) {
+        checkForMatches(accumulatedTranscriptRef.current);
+        accumulatedTranscriptRef.current = "";
+      }
     },
     language,
     checkForMatches,
@@ -505,6 +542,7 @@ export const RecitationProvider = ({ children }) => {
     totalArabicWords,
     setTotalArabicWords,
     autorecitationCheckRef,
+    isMicMutedRef,
   });
 
   // ---- The effect in the old style ----
@@ -846,6 +884,7 @@ export const RecitationProvider = ({ children }) => {
     interruptFlagRef,
     autorecitationCheckRef,
     quranDataRef,
+    isMicMutedRef,
 
     // Constants
     ROLLING_WINDOW_SIZE,
@@ -866,6 +905,7 @@ export const RecitationProvider = ({ children }) => {
     doSpeakTranslation, // if you need to speak a custom text anytime
     isLoading,
     jumpToVerse,
+    handleMicMute,
   };
 
   return (
