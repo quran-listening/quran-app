@@ -60,6 +60,8 @@ const RecitationContainer = () => {
     checkdCheckBox,
     matchesFoundRef,
     flag,
+    isMicMutedRef,
+    handleMicMute,
 
     // Setters
     setLanguage,
@@ -97,6 +99,7 @@ const RecitationContainer = () => {
 
   // Add new state for start text visibility
   const [showStartText, setShowStartText] = useState(true);
+  const [displayLines, setDisplayLines] = useState([]);
 
   const [arabicRecognizedText, setArabicRecognizedText] = useState("");
 
@@ -123,6 +126,30 @@ const RecitationContainer = () => {
   const [verseError, setVerseError] = useState("");
 
   const navigate = useNavigate();
+
+  const [textLines, setTextLines] = useState([]);
+
+  // useEffect(() => {
+  //   if (recognizedText) {
+  //     setTextLines(prevLines => {
+  //       const newLines = [...prevLines, recognizedText];
+  //       // Keep only the last 3 lines
+  //       return newLines.slice(-3);
+  //     });
+  //   }
+  // }, [recognizedText]);
+
+
+  useEffect(() => {
+    if (!recognizedText) return;
+
+    const lines = recognizedText
+      .split(/\r?\n|\r|\\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    setDisplayLines(viewWidth <= 800 ? lines.slice(-3) : lines);
+  }, [recognizedText, viewWidth]);
 
   useEffect(() => {
     if (ayatListRef.current) {
@@ -316,27 +343,6 @@ const RecitationContainer = () => {
   };
 
 
-  // handler
-  // const handleSpeechEngineChange = (event, value) => {
-  //   const newVal = value ?? event?.target?.value;   // works for Joy Select or <select>
-  //   if (!newVal) return;                 // safety
-  //   if (isListeningRef.current) return;  // don’t switch mid‑recording
-
-  //   setSpeechEngine(newVal);
-
-  //   if (newVal === "whisper") {
-  //     let key = localStorage.getItem("whisperKey");
-  //     if (!key) {
-  //       key = prompt("Enter your personal OpenAI API key")?.trim();
-  //       console.log("new Val:",key)
-  //       if (!key) return setSpeechEngine("browser");   // user cancelled
-  //       localStorage.setItem("whisperKey", key);
-  //     }
-  //     setWhisperKey(key);
-  //   }
-  // };
-
-
   // Handle speech engine change
   const handleSpeechEngineChange = (event, value) => {
     const newVal = value ?? event?.target?.value;
@@ -396,6 +402,15 @@ const RecitationContainer = () => {
     setSnackbarOpen(false);
   };
 
+  const splitLines = txt =>
+    txt
+      .split(/\r?\n|\r|\\n/)        // any newline
+      .map(l => l.trim())
+      .filter(Boolean);             // drop blanks
+
+  const allLines = splitLines(recognizedText);   // everything (desktop view)
+  const last3Mobile = allLines.slice(-3);
+
   // Render
   return (
     <Box sx={backgroundBg}>
@@ -444,17 +459,7 @@ const RecitationContainer = () => {
               </Box>
 
               <Box sx={welcomeCard}>
-                {/* <Box className="time">
-                <Box sx={{ marginBottom: "0px", ...bodyXs }} className="today">
-                  Today
-                </Box>
-                <Box sx={timeStyle}>
-                  {new Date().toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </Box>
-              </Box> */}
+
                 <Box sx={{ textAlign: "left" }}>
                   <Box sx={h2}>Real-time Quran Translation App</Box>
                   <Box sx={{ marginTop: "2px", ...bodyXs }}>
@@ -540,11 +545,32 @@ const RecitationContainer = () => {
                         justifyContent: "center",
                       }}
                     >
-                      <img src={microphone} alt="Mic" width={25} height={25} />
+                      <Box
+                        onClick={() => {
+                          if (speechEngine === "whisper") {
+                            handleMicMute();
+                          }
+                        }}
+                        sx={{
+                          cursor: speechEngine === "whisper" ? 'pointer' : 'default',
+                          opacity: speechEngine === "whisper" && isMicMutedRef.current ? 0.5 : 1,
+                          transition: 'opacity 0.2s'
+                        }}
+                      >
+                        <img
+                          src={microphone}
+                          alt={speechEngine === "whisper" && isMicMutedRef.current ? "Mic Muted" : "Mic Active"}
+                          width={25}
+                          height={25}
+                        />
+                      </Box>
                       <Box ml={2} mt={1}>
-                        <LiveMicVisualizer />
+                        <LiveMicVisualizer isMuted={speechEngine === "whisper" && isMicMutedRef.current} />
                       </Box>
                     </Box>
+
+
+
                     {viewWidth <= 800 && <ClickAwayListener onClickAway={handleTooltipClose}>
                       <div>
                         <Tooltip
@@ -580,7 +606,11 @@ const RecitationContainer = () => {
                         </Tooltip>
                       </div>
                     </ClickAwayListener>}
-
+                    <Box sx={{ color: "#fff", fontSize: "14px", textAlign: "center", mt: 1, mb: 1 }}>
+                      {speechEngine === "whisper"
+                        ? "Selected transcription (Whisper OpenAi)"
+                        : "Selected transcription (window speech api)"}
+                    </Box>
                     {viewWidth > 800 && <Box sx={{ display: "flex", alignItems: viewWidth < 800 ? "flex-start" : "center", justifyContent: viewWidth < 600 ? "flex-start" : "center", flexWrap: "wrap", gap: "5px" }}>
                       <Typography sx={{ color: "#fff", fontSize: "15px", marginRight: "10px" }}>Start Recitation from:</Typography>
                       <Box>
@@ -751,9 +781,15 @@ const RecitationContainer = () => {
                           zIndex: 1,
                         }}
                       >
-                        {showStartText
-                          ? "Start Reciting. Turn on speaker to listen to translation"
-                          : recognizedText}
+                        {showStartText ? (
+                          "Start Reciting. Turn on speaker to listen to translation"
+                        ) : (
+                          displayLines.map((line, idx) => (
+                            <Box key={idx} sx={{ wordBreak: "break-word" }}>
+                              {line}
+                            </Box>
+                          ))
+                        )}
                       </Box>
                     )}
                     {arabicRecognizedText?.length > 0 && (
@@ -843,24 +879,63 @@ const RecitationContainer = () => {
                       )}
                     </Box>
                   </Box>
+
+                  {/* Time display below recitation box for viewWidth <= 900 */}
+                  {viewWidth <= 900 && (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        alignItems: "center",
+                        color: "#fff",
+                        mt: 1,
+                        mb: 1
+                      }}
+                    >
+                      <Typography sx={{ color: "#fff" }}>
+                        Time: {formatTime(elapsedTime)}
+                      </Typography>
+                    </Box>
+                  )}
                 </Grid>
 
                 <Grid item xs={12} sm={12} md={6} lg={4}>
-                  <Box sx={{ display: viewWidth <= 900 ? 'flex' : 'none', alignItems: 'center', mr: 2, justifyContent: 'flex-end' }}>
-                    <Checkbox
-                      sx={{
-                        color: "#fff",
-                        "&.Mui-checked": {
-                          color: "#fff",
-                        },
-                      }}
-                      checked={autoRecitation}
-                      onChange={(e) => setAutoRecitation(e.target.checked)}
-                    />
-                    <Typography sx={{ color: "#fff", marginLeft: "5px", fontSize: "15px" }}>
-                      Auto Recitation until "اللّٰهُ أَكْبَرْ"
-                    </Typography>
-                  </Box>
+                  {/* New combined checkboxes for viewWidth <= 900 */}
+                  {viewWidth <= 900 && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', mb: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mr: 3 }}>
+                        <Checkbox
+                          sx={{
+                            color: "#fff",
+                            "&.Mui-checked": {
+                              color: "#fff",
+                            },
+                          }}
+                          checked={autoRecitation}
+                          onChange={(e) => setAutoRecitation(e.target.checked)}
+                        />
+                        <Typography sx={{ color: "#fff", marginLeft: "5px", fontSize: "15px" }}>
+                          Auto Recitation until "اللّٰهُ أَكْبَرْ"
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Checkbox
+                          sx={{
+                            color: "#fff",
+                            "&.Mui-checked": {
+                              color: "#fff",
+                            },
+                          }}
+                          checked={checkdCheckBox}
+                          onChange={handleCheckBoxChange}
+                          inputProps={{ "aria-label": "controlled" }}
+                        />
+                        <Typography sx={{ color: "#fff", marginLeft: "5px", fontSize: "14px" }}>
+                          Auto
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
                   <Box
                     sx={{
                       display: "flex",
@@ -1007,20 +1082,25 @@ const RecitationContainer = () => {
                         </Box>
                       )}
                     </Box>
-                    <Checkbox
-                      sx={{
-                        color: "#fff",
-                        "&.Mui-checked": {
-                          color: "#fff",
-                        },
-                      }}
-                      checked={checkdCheckBox}
-                      onChange={handleCheckBoxChange}
-                      inputProps={{ "aria-label": "controlled" }}
-                    />
-                    <Typography sx={{ color: "#fff", marginLeft: "5px", fontSize: "14px" }}>
-                      Auto
-                    </Typography>
+                    {/* Only show Auto checkbox here for viewwidth > 900 */}
+                    {viewWidth > 900 && (
+                      <>
+                        <Checkbox
+                          sx={{
+                            color: "#fff",
+                            "&.Mui-checked": {
+                              color: "#fff",
+                            },
+                          }}
+                          checked={checkdCheckBox}
+                          onChange={handleCheckBoxChange}
+                          inputProps={{ "aria-label": "controlled" }}
+                        />
+                        <Typography sx={{ color: "#fff", marginLeft: "5px", fontSize: "14px" }}>
+                          Auto
+                        </Typography>
+                      </>
+                    )}
                   </Box>
                   <Box
                     sx={{
@@ -1046,111 +1126,13 @@ const RecitationContainer = () => {
                         Auto Recitation until "اللّٰهُ أَكْبَرْ"
                       </Typography>
                     </Box>
-                    <Typography sx={{ color: "#fff" }}>
-                      Time: {formatTime(elapsedTime)}
-                    </Typography>
+                    {/* Only show time here for viewWidth > 900 */}
+                    {viewWidth > 900 && (
+                      <Typography sx={{ color: "#fff" }}>
+                        Time: {formatTime(elapsedTime)}
+                      </Typography>
+                    )}
                   </Box>
-                  {viewWidth < 800 && <Box>
-                    <Typography sx={{ color: "#fff", fontSize: "15px", marginRight: "10px", marginBottom: "5px" }}>Start Recitation from:</Typography>
-                    <Box sx={{ marginBottom: "10px" }}>
-                      <Input
-                        style={{ width: viewWidth < 800 ? "100%" : "150px", marginBottom: "10px" }}
-                        placeholder="surah number"
-                        type="number"
-                        value={surahNumber}
-                        onChange={handleSurahChange}
-                        sx={{
-                          marginRight: 1,
-                          '&.Mui-error': {
-                            borderColor: '#f44336',
-                          },
-                          ...(surahError && {
-                            borderColor: '#f44336',
-                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
-                          })
-                        }}
-                        error={!!surahError}
-                      />
-                      <Box>
-                        {surahError && (
-                          <Typography
-                            sx={{
-                              color: '#f44336',
-                              fontSize: '0.75rem',
-                              ml: 1,
-                              marginTop: "-7px",
-                              marginBottom: "10px"
-                            }}
-                          >
-                            {surahError}
-                          </Typography>
-                        )}
-                      </Box>
-                    </Box>
-                    <Box sx={{ marginBottom: "10px" }}>
-                      <Input
-                        style={{ width: viewWidth < 800 ? "100%" : "150px", }}
-                        placeholder="verse number"
-                        type="number"
-                        value={verseNumber}
-                        onChange={handleVerseChange}
-                        sx={{
-                          marginRight: 1,
-                          '&.Mui-error': {
-                            borderColor: '#f44336',
-                          },
-                          ...(verseError && {
-                            borderColor: '#f44336 !important',
-                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
-                            '& input': {
-                              color: '#f44336',
-                            }
-                          })
-                        }}
-                        error={!!verseError}
-                        slotProps={{
-                          input: {
-                            sx: {
-                              '--Input-decoratorChildHeight': '45px',
-                            },
-                          },
-                          helperText: {
-                            sx: {
-                              color: '#f44336',
-                            },
-                          },
-                        }}
-                      />
-                      <Box>
-                        {verseError && (
-                          <Typography
-                            sx={{
-                              color: '#f44336',
-                              fontSize: '0.75rem',
-                              ml: 1,
-                              marginBottom: "10px"
-                            }}
-                          >
-                            {verseError}
-                          </Typography>
-                        )}
-                      </Box>
-                    </Box>
-                    <Button
-                      onClick={handleJumpToVerse}
-                      sx={{
-                        backgroundColor: "#2C5741",
-                        color: "#fff",
-                        "&:hover": {
-                          backgroundColor: "#234432",
-                        },
-                        width: viewWidth < 800 ? "100%" : "150px"
-                      }}
-                    >
-                      Go
-                    </Button>
-                  </Box>
-                  }
                 </Grid>
               </Grid>
 

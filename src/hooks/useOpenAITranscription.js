@@ -4,7 +4,9 @@ const useOpenAITranscription = ({
   onTranscriptionResult,
   quranDataRef,
   whisperKey,
+  prompt = "",
   language = 'ar', // Default to Arabic
+  isMicMutedRef,
 }) => {
   const [lines, setLines] = useState([]);   // [{ar,en}]
   const [recording, setRecording] = useState(false);
@@ -12,24 +14,29 @@ const useOpenAITranscription = ({
   const mediaRec = useRef(null);
 
   const BASE_URL = process.env.NODE_ENV === 'production'
-  ? 'https://api.goquran.app'
-  : 'http://localhost:9091';
+    ? 'https://api.goquran.app'
+    : 'http://localhost:9091';
+
+  const TRANSCRIPTION_PROMPT = `
+بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيمِ(Arabic only. Ignore any non‑Arabic speech, background voices, music, or noise.)
+`;
 
   const genId = () =>
     `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const flush = async () => {
+    if (isMicMutedRef && isMicMutedRef.current) return;
     if (!sessionId.current) return;
-    const apiKey =  localStorage.getItem("whisperKey") ||whisperKey || "";
+    const apiKey = localStorage.getItem("whisperKey") || whisperKey || "";
     const r = await fetch(`${BASE_URL}/flush`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-OPENAI-KEY": apiKey || "",
       },
-      body: JSON.stringify({ sessionId: sessionId.current })
+      body: JSON.stringify({ sessionId: sessionId.current, prompt: TRANSCRIPTION_PROMPT })
     });
-    console.log("body",JSON.stringify({ sessionId: sessionId.current }))
+    console.log("body", JSON.stringify({ sessionId: sessionId.current }))
     if (!r.ok || r.status === 204 || r.status === 202) return;
     const { delta } = await r.json();
     if (!delta) return;
