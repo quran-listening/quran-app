@@ -60,7 +60,7 @@ app.post("/uploadChunk", upload.single("chunk"), (req, res) => {
 /* ───────── /flush – incremental transcription ───────── */
 app.post("/flush", async (req, res) => {
   console.log("body", req.body);
-  const { sessionId } = req.body;
+  const { sessionId,prompt } = req.body;
   const sess = sessions[sessionId];
   if (!sess) return res.status(204).end();
 
@@ -79,6 +79,7 @@ app.post("/flush", async (req, res) => {
     form.append("file", fs.readFileSync(wav), { filename: "audio.wav" });
     form.append("model", "whisper-1");
     form.append("language", "ar");
+    if (prompt) form.append("prompt", prompt);
 
     const apiKey = req.get("X-OPENAI-KEY");
 
