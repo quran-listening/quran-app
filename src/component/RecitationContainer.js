@@ -23,6 +23,7 @@ import start from "../assets/img/start-icon.svg";
 import muteIcon from "../assets/img/mute1.png";
 import unmuteIcon from "../assets/img/unmute1.png";
 import microphone from "../assets/img/microphone.png";
+import micMute from "../assets/img/mic_mute.png";
 import CircularProgress from "@mui/material/CircularProgress";
 // Styles
 import {
@@ -44,7 +45,7 @@ import MuiAlert from "@mui/material/Alert";
 import useMicrophone from "../hooks/useMicrophones";
 import LiveMicVisualizer from "./LiveMicVisualizer";
 import FeedbackForm from "./FeedbackForm";
-import { ClickAwayListener, Snackbar, Tooltip } from "@mui/material";
+import { ClickAwayListener, Snackbar, Tooltip, Popover } from "@mui/material";
 import { languagesData } from "../utils/constant.js";
 
 const RecitationContainer = () => {
@@ -128,6 +129,16 @@ const RecitationContainer = () => {
   const navigate = useNavigate();
 
   const [textLines, setTextLines] = useState([]);
+
+  const [keyAnchorEl, setKeyAnchorEl] = useState(null);
+  const [keyInfo, setKeyInfo] = useState(() => {
+    const storedKey = localStorage.getItem("whisperKey");
+    const storedDate = localStorage.getItem("whisperKeyDate");
+    return storedKey ? {
+      lastFour: storedKey.slice(-4),
+      date: storedDate || new Date().toISOString()
+    } : null;
+  });
 
   // useEffect(() => {
   //   if (recognizedText) {
@@ -368,7 +379,7 @@ const RecitationContainer = () => {
   // Check API key validity
   // Update API key validation function
   const checkApiKeyValidity = async (key) => {
-    setLoading(true); // Show loader
+    setLoading(true);
     try {
       const response = await fetch("https://api.openai.com/v1/models", {
         headers: {
@@ -381,19 +392,23 @@ const RecitationContainer = () => {
         throw new Error(errorData.error?.message || "Invalid API key");
       }
 
-      // If valid, just close loading
+      // Store key and date if valid
+      localStorage.setItem("whisperKeyDate", new Date().toISOString());
+      setKeyInfo({
+        lastFour: key.slice(-4),
+        date: new Date().toISOString()
+      });
       setLoading(false);
     } catch (error) {
-      // Handle invalid key or network errors
       console.error("API key validation failed:", error);
       setSnackbarMessage(error.message || "Invalid API key. Please check your key and try again.");
       setSnackbarOpen(true);
-
-      // Clear invalid key and reset engine
       localStorage.removeItem("whisperKey");
+      localStorage.removeItem("whisperKeyDate");
+      setKeyInfo(null);
       setSpeechEngine("browser");
     } finally {
-      setLoading(false); // Ensure loading is always stopped
+      setLoading(false);
     }
   };
 
@@ -410,6 +425,23 @@ const RecitationContainer = () => {
 
   const allLines = splitLines(recognizedText);   // everything (desktop view)
   const last3Mobile = allLines.slice(-3);
+
+  const handleKeyClick = (event) => {
+    setKeyAnchorEl(event.currentTarget);
+  };
+
+  const handleKeyClose = () => {
+    setKeyAnchorEl(null);
+  };
+
+  const handleClearKey = () => {
+    localStorage.removeItem("whisperKey");
+    localStorage.removeItem("whisperKeyDate");
+    setKeyInfo(null);
+    setWhisperKey("");
+    setSpeechEngine("browser");
+    handleKeyClose();
+  };
 
   // Render
   return (
@@ -558,10 +590,11 @@ const RecitationContainer = () => {
                         }}
                       >
                         <img
-                          src={microphone}
+                          src={speechEngine === "whisper" && isMicMutedRef.current ? micMute : microphone}
                           alt={speechEngine === "whisper" && isMicMutedRef.current ? "Mic Muted" : "Mic Active"}
                           width={25}
                           height={25}
+                          style={{ filter: speechEngine === "whisper" && isMicMutedRef.current ? 'invert(1)' : 'none' }}
                         />
                       </Box>
                       <Box ml={2} mt={1}>
@@ -1247,6 +1280,74 @@ const RecitationContainer = () => {
                 <Option value="browser">Browser Speech API</Option>
                 <Option value="whisper">OpenAI Whisper</Option>
               </Select>
+
+              {speechEngine === "whisper" && keyInfo && (
+                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Box
+                    onClick={handleKeyClick}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                      }
+                    }}
+                  >
+                    <Typography sx={{ color: '#fff', fontSize: '14px' }}>
+                      Key: ••••{keyInfo.lastFour}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+
+              <Popover
+                open={Boolean(keyAnchorEl)}
+                anchorEl={keyAnchorEl}
+                onClose={handleKeyClose}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'center',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'center',
+                }}
+                PaperProps={{
+                  sx: {
+                    backgroundColor: '#2C5741',
+                    color: '#fff',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                  }
+                }}
+              >
+                <Box sx={{ minWidth: '200px' }}>
+                  <Typography sx={{ mb: 1,color: '#fff' }}>
+                    Last 4 digits: {keyInfo?.lastFour}
+                  </Typography>
+                  <Typography sx={{ mb: 2, fontSize: '14px',color: '#fff' }}>
+                    Added: {new Date(keyInfo?.date).toLocaleString()}
+                  </Typography>
+                  <Button
+                    onClick={handleClearKey}
+                    sx={{
+                      backgroundColor: '#8a1225',
+                      color: '#fff',
+                      '&:hover': {
+                        backgroundColor: '#6d0e1d',
+                      },
+                      width: '100%'
+                    }}
+                  >
+                    Clear Key
+                  </Button>
+                </Box>
+              </Popover>
 
               <Box
                 sx={{ marginTop: "20px", cursor: "pointer" }}
