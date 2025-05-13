@@ -67,7 +67,7 @@ app.get("/api/ga/events", async (_, res) => {
   }
 });
 
-/* ----- mini “overview” report (last-7-days) ----------------- */
+/* ----- mini "overview" report (last-7-days) ----------------- */
 app.get("/api/ga/overview", async (_, res) => {
   try {
     const [r] = await analytics.runReport({
@@ -206,7 +206,35 @@ app.post("/endSession", (req, res) => {
   res.end();
 });
 
+/* ───────── /deleteAudio – delete audio files ───────── */
+app.post("/deleteAudio", (req, res) => {
+  const { sessionId } = req.body;
+  if (!sessionId) return res.status(400).json({ error: "sessionId is required" });
 
+  const sess = sessions[sessionId];
+  if (!sess) return res.status(404).json({ error: "Session not found" });
+
+  try {
+    // Delete webm file if it exists
+    if (fs.existsSync(sess.webm)) {
+      fs.unlinkSync(sess.webm);
+    }
+
+    // Delete wav file if it exists
+    const wav = path.join(uploadsDir, `${sessionId}.wav`);
+    if (fs.existsSync(wav)) {
+      fs.unlinkSync(wav);
+    }
+
+    // Remove session from sessions object
+    delete sessions[sessionId];
+
+    res.json({ message: "Audio files deleted successfully" });
+  } catch (e) {
+    console.error("deleteAudio", e);
+    res.status(500).json({ error: e.toString() });
+  }
+});
 
 app.listen(port, () => console.log(`API  ➜  http://${host}:${port}`));
 

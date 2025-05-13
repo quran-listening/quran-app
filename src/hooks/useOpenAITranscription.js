@@ -83,6 +83,7 @@ const useOpenAITranscription = ({
     recording,
     startRecognition,
     stopRecognition,
+    sessionId: sessionId.current
   };
 };
 

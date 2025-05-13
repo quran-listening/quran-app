@@ -8,5 +8,8 @@ export default function useTranscriptionRouter(engine, opts) {
   const whisper = useOpenAITranscription({ ...opts, isMicMutedRef: opts.isMicMutedRef });   // pass isMicMutedRef
 
   // Pick which one to expose
-  return engine === "whisper" ? whisper : browser;
+  return engine === "whisper" ? {
+    ...whisper,
+    sessionId: whisper.sessionId
+  } : browser;
 }
