@@ -8,6 +8,7 @@ import fetch from "node-fetch";
 import FormData from "form-data";
 import dotenv from "dotenv";
 import { corsOptions } from "./corsOptions.js";
+import { BetaAnalyticsDataClient } from "@google-analytics/data";
 
 dotenv.config();
 
@@ -17,11 +18,85 @@ app.use(cors({origin:'*'}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+
+/* ---------- Google-Analytics client ---------- */
+const analytics = new BetaAnalyticsDataClient(
+  process.env.GA_KEY_JSON
+    ? { credentials: JSON.parse(process.env.GA_KEY_JSON) }
+    : { keyFile: process.env.GA_KEY_FILE }
+);
+
+const PROPERTY = `properties/${process.env.GA_PROPERTY_ID}`;
+if (!process.env.GA_PROPERTY_ID) {
+  throw new Error("GA_PROPERTY_ID env var is missing");
+}
+
+/* ---------- GA routes (MUST come AFTER analytics!) ---------- */
+
+// realtime: activeUsers + eventCount
+app.get("/api/ga/realtime", async (_, res) => {
+  try {
+    const [resp] = await analytics.runRealtimeReport({
+      property: PROPERTY,
+      dimensions: [{ name: "eventName" }],
+      metrics: [{ name: "eventCount" }, { name: "activeUsers" }],
+    });
+    res.set("Cache-Control", "public,max-age=10");
+    res.json(resp);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// last 7-days event counts
+app.get("/api/ga/events", async (_, res) => {
+  try {
+    const [resp] = await analytics.runReport({
+      property: PROPERTY,
+      dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+      dimensions: [{ name: "eventName" }],
+      metrics: [{ name: "eventCount" }],
+      orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+    });
+    res.set("Cache-Control", "public,max-age=300");
+    res.json(resp);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/* ----- mini “overview” report (last-7-days) ----------------- */
+app.get("/api/ga/overview", async (_, res) => {
+  try {
+    const [r] = await analytics.runReport({
+      property: PROPERTY,                       // "properties/398765432"
+      dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+      dimensions: [{ name: "date" }],           // yyyyMMdd string
+      metrics: [
+        { name: "activeUsers" },
+        { name: "eventCount" },
+        { name: "newUsers" }
+      ],
+      metricAggregations: ["TOTAL"],            // give us totals as well
+      orderBys: [{ dimension: { dimensionName: "date" } }]
+    });
+    res.json(r);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 const host  = process.env.HOST || '0.0.0.0';
 
 const { FRONTEND_BASE_URL } = process.env
 
 const port = process.env.PORT || 9091;
+
+
+
 
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
@@ -131,4 +206,7 @@ app.post("/endSession", (req, res) => {
   res.end();
 });
 
+
+
 app.listen(port, () => console.log(`API  ➜  http://${host}:${port}`));
+
