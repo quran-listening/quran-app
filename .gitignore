@@ -2,7 +2,7 @@ node_modules/
 
 package-lock.json
 build/
-api/service-account.json
 .env
 *.webm
 *.wav
+api/service-account.json
