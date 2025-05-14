@@ -32,28 +32,14 @@ import { calculateSimilarity, isLastAyahSpoken, isLastVerse } from "../utils/qur
 import { languagesData } from "../utils/constant";
 import { wholeQuran } from "../data/wholeQuran";
 
+// Constants
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:9091';
+
 /**
  * The RecitationProvider manages all global states and methods
  * for real-time Quranic recitation & translation.
  * 
  */
-
-// const nameToId = surahNameArray.reduce((acc, s) => {
-//   acc[s.name] = s.surahId;            // "البقرة" → 2, etc.
-//   return acc;
-// }, {});
-
-// const lastAyahMap = surahLastAyah.reduce((acc, row) => {
-//   const sid = nameToId[row.name];     // look up numeric id from the name
-//   if (sid) acc[sid] = row.normalizedText;
-//   return acc;
-// }, {});
-
-// const isLastAyah = (sid, transcriptNorm) => {
-//   const normLast = lastAyahMap[sid];
-//   if (!normLast) return false;
-//   return calculateSimilarity(transcriptNorm, normLast) >= 0.82;
-// };
 
 export const RecitationProvider = ({ children }) => {
   // ------------------- Global States -------------------
@@ -79,6 +65,7 @@ export const RecitationProvider = ({ children }) => {
   // const [versesList, setVersesList] = useState([]);
 
   // References
+  const sessionId = useRef(null);
   const isListeningRef = useRef(false);
   const translationRecognizedTextRef = useRef("");
   const versesList = useRef([]);
@@ -505,6 +492,7 @@ export const RecitationProvider = ({ children }) => {
     recording: isRecording,
     startRecognition,
     stopRecognition,
+    sessionId: whisperSessionId,
   } = useTranscriptionRouter(speechEngine, {
     onTranscriptionResult: (text) => {
       /* Skip processing if mic is muted */
@@ -544,6 +532,13 @@ export const RecitationProvider = ({ children }) => {
     autorecitationCheckRef,
     isMicMutedRef,
   });
+
+  // Update sessionId when whisper session changes
+  useEffect(() => {
+    if (speechEngine === "whisper") {
+      sessionId.current = whisperSessionId;
+    }
+  }, [whisperSessionId, speechEngine]);
 
   // ---- The effect in the old style ----
   useEffect(() => {
@@ -710,11 +705,10 @@ export const RecitationProvider = ({ children }) => {
     stopRecognition();
   };
 
-  const resetter = () => {
+  const resetter = async () => {
     console.log("resetter called");
 
     /* 1️⃣  Abort SpeechRecognition & empty buffers */
-
     isListeningRef.current = false;
     transcriptRef.current = "";
     accumulatedTranscriptRef.current = "";
@@ -729,13 +723,30 @@ export const RecitationProvider = ({ children }) => {
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
     }
-    // stopRecognition();
+
+    // If using whisper, delete audio files
+    if (speechEngine === "whisper" && sessionId.current) {
+      try {
+        const response = await fetch(`${BASE_URL}/deleteAudio`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ sessionId: sessionId.current })
+        });
+        
+        if (!response.ok) {
+          console.error('Failed to delete audio files');
+        }
+      } catch (error) {
+        console.error('Error deleting audio files:', error);
+      }
+    }
 
     // Reset recognized text
     setRecognizedText("");
 
     currentVerseIndexRef.current = 0;
-    // setRollingWindow([]);
 
     // Reset times
     startTime.current = null;

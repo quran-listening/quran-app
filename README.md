@@ -23,7 +23,7 @@ Welcome to the **Real-time Quran Listening & Translation** app! This project use
    Listen to Arabic recitations, detect surah/ayah live, and display/transmit translations.
 
 2. **Speech Recognition**  
-   Utilizes the browser’s built-in Speech Recognition API (Web Speech API) to capture audio input.
+   Utilizes the browser's built-in Speech Recognition API (Web Speech API) to capture audio input.
 
 3. **Translation**  
    Converts matched verses into either English or Urdu text and optionally speaks them aloud.
@@ -58,16 +58,16 @@ Welcome to the **Real-time Quran Listening & Translation** app! This project use
 ## How It Works
 
 1. **Permissions & Initialization**  
-   Upon clicking “Start Translating,” the app requests microphone access. Once granted, speech recognition begins.
+   Upon clicking "Start Translating," the app requests microphone access. Once granted, speech recognition begins.
 
 2. **Recognition & Normalization**  
    The recognized Arabic text is stripped of diacritics to maximize matching accuracy.
 
 3. **Verse Matching**  
-   The recognized text is continuously compared against preprocessed Quranic data. When a verse is confidently matched, it’s displayed and spoken (if unmuted).
+   The recognized text is continuously compared against preprocessed Quranic data. When a verse is confidently matched, it's displayed and spoken (if unmuted).
 
 4. **Adaptive TTS**  
-   The app measures the speed of recitation (words per minute) and dynamically adjusts the TTS rate (if “Auto” is checked).
+   The app measures the speed of recitation (words per minute) and dynamically adjusts the TTS rate (if "Auto" is checked).
 
 5. **Stopping & Reset**  
    You can stop listening at any time, or simply refresh the page to reset everything (like reloading your personal translator).
@@ -111,6 +111,28 @@ Welcome to the **Real-time Quran Listening & Translation** app! This project use
    The app is now live at [http://localhost:3000](http://localhost:3000) (by default).
    ```
 
+4. **Set Up Google Cloud Service Account (Required for Speech-to-Text)**
+
+   To use the speech recognition features, you'll need to set up a Google Cloud service account:
+
+   1. Go to the [Google Cloud Console](https://console.cloud.google.com)
+   2. Create a new project or select an existing one
+   3. Enable the Cloud Speech-to-Text API for your project
+   4. Create a service account:
+      - Go to "IAM & Admin" > "Service Accounts"
+      - Click "Create Service Account"
+      - Give it a name and description
+      - Grant it the "Cloud Speech-to-Text User" role
+   5. Create a new key for the service account:
+      - Click on the service account
+      - Go to the "Keys" tab
+      - Click "Add Key" > "Create new key"
+      - Choose JSON format
+   6. Download the JSON key file and rename it to `service-account.json`
+   7. Place the file in the `api` directory of the project
+   
+   > **Note**: Never commit your `service-account.json` file to version control. It's already added to `.gitignore` for security.
+
 ---
 
 ## Usage
@@ -135,7 +157,7 @@ Welcome to the **Real-time Quran Listening & Translation** app! This project use
 6. **Stop Listening**  
    Click **Stop Listening** to end recognition (or refresh the page to reset everything).
 
-> **Tip**: If you hear nothing, check your volume, speaker selection, or ensure you’ve not muted the TTS. We can’t do the listening _and_ the hearing for you!
+> **Tip**: If you hear nothing, check your volume, speaker selection, or ensure you've not muted the TTS. We can't do the listening _and_ the hearing for you!
 
 ---
 
@@ -189,6 +211,6 @@ This project is licensed under an open-source license(MIT Licencse). Feel free t
 
 Or just open an issue in this repository!
 
-If you’d like to contribute major changes or discuss long-term enhancements, we’d love to hear from you. And by all means, if you find any creative bugs or improvements, let us know—bugs don’t fix themselves (though we wish they did).
+If you'd like to contribute major changes or discuss long-term enhancements, we'd love to hear from you. And by all means, if you find any creative bugs or improvements, let us know—bugs don't fix themselves (though we wish they did).
 
-Thanks for stopping by, and we hope this app helps enhance your Quranic studies! Remember: technology can be helpful, but it’s no substitute for authenticity and deeper comprehension. Keep learning, stay curious, and may your recitations be ever more enlightened.
+Thanks for stopping by, and we hope this app helps enhance your Quranic studies! Remember: technology can be helpful, but it's no substitute for authenticity and deeper comprehension. Keep learning, stay curious, and may your recitations be ever more enlightened.

@@ -47,6 +47,7 @@ import LiveMicVisualizer from "./LiveMicVisualizer";
 import FeedbackForm from "./FeedbackForm";
 import { ClickAwayListener, Snackbar, Tooltip, Popover } from "@mui/material";
 import { languagesData } from "../utils/constant.js";
+import GaDashboard from "./GaDashboard.jsx";
 
 const RecitationContainer = () => {
   const {
@@ -361,6 +362,7 @@ const RecitationContainer = () => {
     if (isListeningRef.current) return;
 
     setSpeechEngine(newVal);
+    window.gtag('event', 'engine_selected', { feature: newVal });  // "browser" | "whisper"
 
     if (newVal === "whisper") {
       let key = localStorage.getItem("whisperKey");
@@ -555,6 +557,12 @@ const RecitationContainer = () => {
                       below using the feedback form and indicate you would like
                       to help improve this app
                     </Box>
+                  </Box>
+                  <Box sx={{ mt: 4 }}>
+                    <Typography sx={{ color: '#fff', fontSize: '18px', mb: 1 }}>
+                      Engine usage (last 7 days)
+                    </Typography>
+                    
                   </Box>
                   <Box
                     sx={{
@@ -809,9 +817,21 @@ const RecitationContainer = () => {
                           top: "-11px",
                           right: "-5px",
                           minHeight: "30px",
+                          maxHeight: "70px",
                           backgroundColor: "#1E1F26",
                           padding: "10px",
                           zIndex: 1,
+                          overflow: "auto",
+                          "&::-webkit-scrollbar": {
+                            display: "none"
+                          },
+                          scrollbarWidth: "none",
+                          msOverflowStyle: "none"
+                        }}
+                        ref={(el) => {
+                          if (el) {
+                            el.scrollTop = el.scrollHeight;
+                          }
                         }}
                       >
                         {showStartText ? (
@@ -1186,6 +1206,11 @@ const RecitationContainer = () => {
                     Stop Listening
                   </Button>
                 </Box>
+                <Box sx={{margin:"30px 0 0 0"}}>
+
+              <GaDashboard />
+                </Box>
+
                 <Box
                   sx={{
                     marginTop: "30px",
@@ -1215,6 +1240,7 @@ const RecitationContainer = () => {
                   </Button>
                 </Box>
               </Box>
+
             </Box>
           ) : (
             // ---------------- INITIAL MODE ----------------
@@ -1327,10 +1353,10 @@ const RecitationContainer = () => {
                 }}
               >
                 <Box sx={{ minWidth: '200px' }}>
-                  <Typography sx={{ mb: 1,color: '#fff' }}>
+                  <Typography sx={{ mb: 1, color: '#fff' }}>
                     Last 4 digits: {keyInfo?.lastFour}
                   </Typography>
-                  <Typography sx={{ mb: 2, fontSize: '14px',color: '#fff' }}>
+                  <Typography sx={{ mb: 2, fontSize: '14px', color: '#fff' }}>
                     Added: {new Date(keyInfo?.date).toLocaleString()}
                   </Typography>
                   <Button

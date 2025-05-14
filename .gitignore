@@ -5,3 +5,4 @@ build/
 .env
 *.webm
 *.wav
+api/service-account.json
