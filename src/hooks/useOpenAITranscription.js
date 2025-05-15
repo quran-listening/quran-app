@@ -57,7 +57,7 @@ const useOpenAITranscription = ({
       fd.append("sessionId", sessionId.current);
       await fetch(`${BASE_URL}/uploadChunk`, { method: "POST", body: fd });
     };
-    mediaRec.current.start(1000);        // 3‑s chunks
+    mediaRec.current.start(3000);        // 3‑s chunks
 
     /* flush every 8 s */
     flush.timer = setInterval(flush, 6000);

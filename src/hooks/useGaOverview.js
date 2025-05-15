@@ -14,7 +14,8 @@ export default function useGaOverview() {
 
   useEffect(() => {
     (async () => {
-      const r = await fetch("/api/ga/overview", { cache: "no-cache" });
+      const baseUrl = process.env.REACT_APP_API_URL || "http://localhost:9091";
+      const r = await fetch(`${baseUrl}/api/ga/overview`, { cache: "no-cache" });
       if (!r.ok) return;
 
       const j = await r.json();
